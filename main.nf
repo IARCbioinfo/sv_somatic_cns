@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 
-//help function for the tool
+//help function for the tool 
 def show_help (){
   log.info IARC_Header()
   log.info tool_header()
@@ -11,7 +11,7 @@ def show_help (){
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run iarc/nf-gene-fusions --reads '*_R{1,2}.fastq.gz'  -profile singularity
+    nextflow run iarc/sv_somatic_cns --reads '*_R{1,2}.fastq.gz'  -profile singularity
 
     Mandatory arguments:
       --reads [file]                Path to input data
