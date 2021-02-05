@@ -1,0 +1,11 @@
+name: sv_somatic_cns
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - delly==0.8.3
+  - manta==1.6.0
+  - svaba==1.1.0
+  - survivor==1.0.7
