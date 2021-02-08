@@ -138,7 +138,7 @@ process manta  {
    //additional files
    file("${sampleID}.manta_somatic.vcf") into manta_output
    file("${sampleID}_results") into manta_res_dir
-  when: params.manta
+  when: params.manta == true
 
   script:
   //we set the computational resources for this tool
@@ -188,7 +188,7 @@ process delly {
    set val(sampleID), file("${sampleID}.delly_somatic.vcf") into delly_vcf
    //optional files
    file("*.{tsv,bcf}") into delly_output
-  when: params.delly
+  when: params.delly == true
 
   script:
   //run delly with mathched data
@@ -231,7 +231,7 @@ process svaba {
      set val(sampleID), file("${sampleID}*.vcf") into svaba_vcf
      file "${sampleID}.alignments.txt.gz" into svaba_alignments
 
-     when: params.svaba
+     when: params.svaba == true
 
      shell :
      if(params.targets) targets="-k ${params.svaba_targets}"
