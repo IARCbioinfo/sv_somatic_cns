@@ -122,6 +122,7 @@ process manta  {
   cpus params.cpu
   memory params.mem+'G'
   tag {"Manta"+sampleID }
+  //label 'manta_exec'
 
   publishDir "${params.output_folder}/MANTA/", mode: 'copy'
 
@@ -169,7 +170,7 @@ process manta  {
 
 //delly process
 process delly {
-  cpus params.cpu
+  cpus 1
   memory params.mem+'G'
   tag {"Delly"+sampleID }
 
@@ -206,7 +207,7 @@ process delly {
 
 //we run the SVaba caller
 process svaba {
-	cpus params.cpu
+	   cpus params.cpu
      memory params.mem+'G'
      tag { "SVABA"+sampleID }
 
@@ -229,14 +230,16 @@ process svaba {
 
      when: params.svaba
 
-
      shell :
      if(params.targets) targets="-k ${params.svaba_targets}"
      else targets=""
      if(normalBam.baseName == 'None' ) normal=""
      else  normal="-n ${normalBam}"
+     if(params.svaba_dbsnp == "None") dbsnp=""
+     else dbsnp="--dbsnp-vcf ${params.svaba_dbsnp}"
+
      '''
-     svaba run -t !{tumorBam} !{normal} -p !{params.cpu} !{params.svaba_dbsnp} -a somatic_run -G !{fasta_ref} !{targets} !{params.svaba_options}
+     svaba run -t !{tumorBam} !{normal} -p !{params.cpu} !{dbsnp} -a somatic_run -G !{fasta_ref} !{targets} !{params.svaba_options}
      mv somatic_run.alignments.txt.gz !{sampleID}.alignments.txt.gz
      for f in `ls *.vcf`; do mv $f !{sampleID}.$f; done
      '''
