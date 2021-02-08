@@ -143,7 +143,7 @@ process manta  {
 
   script:
   //we set the computational resources for this tool
-
+  if (params.debug==false){
   """
   #we create the configuration file
   CFG_MANTA=${params.manta_cfg}
@@ -164,7 +164,13 @@ process manta  {
   #mv ${sampleID}.matched/results/variants/candidateSV.vcf.gz ${sampleID}.manta_candidateSV.vcf.gz
   #mv ${sampleID}.matched/results/variants/diploidSV.vcf.gz ${sampleID}.manta_diploidSV.vcf.gz
   """
-
+  }else{
+    """
+    touch ${sampleID}.manta_somatic_inv.vcf
+    touch ${sampleID}.manta_somatic.vcf
+    mkdir ${sampleID}_results
+    """
+  }
 }
 
 
@@ -193,6 +199,7 @@ process delly {
 
   script:
   //run delly with mathched data
+  if (params.debug==false){
   """
   delly call -x  ${delly_blacklist}  -g ${fasta_ref} -o ${sampleID}.matched.bcf ${tumorBam} ${normalBam}
   #we call use the file
@@ -202,7 +209,14 @@ process delly {
   #we convert the bcf file to VCF
   bcftools view ${sampleID}.somatic.bcf > ${sampleID}.delly_somatic.vcf
   """
-
+  }else{
+    """
+      touch ${sampleID}.sample.tsv
+      touch ${sampleID}.matched.bcf
+      touch ${sampleID}.somatic.bcf
+      touch ${sampleID}.delly_somatic.vcf
+    """
+  }
 }
 
 
@@ -235,19 +249,28 @@ process svaba {
 
      when: params.svaba
 
-     shell:
-     if(params.targets) targets="-k ${params.svaba_targets}"
+     script:
+     if(params.svaba_targets) targets="-k ${params.svaba_targets}"
      else targets=""
      if(normalBam.baseName == 'None' ) normal=""
      else  normal="-n ${normalBam}"
      if(params.svaba_dbsnp == "None") dbsnp=""
      else dbsnp="--dbsnp-vcf ${params.svaba_dbsnp}"
-
-     '''
-     svaba run -t !{tumorBam} !{normal} -p !{params.cpu} !{dbsnp} -a somatic_run -G !{fasta_ref} !{targets} !{params.svaba_options}
-     mv somatic_run.alignments.txt.gz !{sampleID}.alignments.txt.gz
-     for f in `ls *.vcf`; do mv $f !{sampleID}.$f; done
-     '''
+    if (params.debug==false){
+     """
+     svaba run -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -a somatic_run -G ${fasta_ref} ${targets} ${params.svaba_options}
+     mv somatic_run.alignments.txt.gz ${sampleID}.alignments.txt.gz
+     for f in `ls *.vcf`; do mv $f ${sampleID}.$f; done
+     """
+   }else{
+     """
+     touch ${sampleID}.alignments.txt.gz
+     touch ${sampleID}.somatic.sv.vcf
+     touch ${sampleID}.somatic.indel.vcf
+     touch ${sampleID}.germline.sv.vcf
+     touch ${sampleID}.germline.indel.vcf
+     """
+   }
 }
 
 
