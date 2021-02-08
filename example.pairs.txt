@@ -4,6 +4,3 @@ T2	T2.cram	N2.cram
 T3	T3.cram	N2.cram
 T2	T2.cram	N2.cram
 T3	T3.cram	N2.cram
-S00016	S00016_T_realigned_alt_BQSRecalibrated.cram	S00016_N_realigned_alt_BQSRecalibrated.cram
-S01493	S01493_T_realigned_alt_BQSRecalibrated.cram	S01493_N_realigned_alt_BQSRecalibrated.cram
-S01501	S01501_T_realigned_alt_BQSRecalibrated.cram	S01501_N_realigned_alt_BQSRecalibrated.cram
