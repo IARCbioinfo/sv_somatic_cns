@@ -90,6 +90,8 @@ if (params.delly) {
 if (params.manta) {
     running_tools.add("Manta")
     manta_callable_c = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz"}
+    manta_callable_i = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz.tbi")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz.tbi"}
+
 }
 
 
@@ -133,6 +135,8 @@ process manta  {
   //file fasta_ref
   //file fasta_ref_fai
   file (manta_callable) from manta_callable_c
+  file (manta_callable_index) from manta_callable_i
+
   output:
    //primary vcf file
    set val(sampleID), file("${sampleID}.manta_somatic_inv.vcf") into manta_vcf
@@ -280,7 +284,7 @@ def returnFile(it) {
   // Return file if it exists
     inputFile = file(it)
     if (!file(inputFile).exists()) exit 1, "The following file: ${inputFile},  do not exist!!! see --help for more information"
-    return inputFile
+      return inputFile
 }
 
 
