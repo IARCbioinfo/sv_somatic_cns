@@ -36,7 +36,8 @@ def show_help (){
         Delly:
 
         Manta:
-
+        --manta_cfg                   Manta config file [def:"/opt/conda/envs/sv_somatic_cns/share/manta-1.6.0-0/bin/configManta.py"]
+        --manta_samtools              path to samtools [def:"/opt/conda/envs/sv_somatic_cns/bin/samtools"]
         SVaba:
         --svaba_dbsnp                FILE        dbSNP file available at: https://data.broadinstitute.org/snowman/dbsnp_indel.vcf
         --svaba_targets              FILE        bed file with target positions for svaba
@@ -86,12 +87,12 @@ if (params.manta) {
 
 
 //bwa index for SVaba
-fasta_ref_sa = null
-fasta_ref_bwt = null
-fasta_ref_ann = null
-fasta_ref_amb = null
-fasta_ref_pac = null
-fasta_ref_alt = null
+fasta_ref_sa = ""
+fasta_ref_bwt = ""
+fasta_ref_ann = ""
+fasta_ref_amb = ""
+fasta_ref_pac = ""
+fasta_ref_alt = ""
 //bwa_index=Channel.create()
 if (params.svaba) {
     running_tools.add("SVaba")
@@ -106,21 +107,65 @@ if (params.svaba) {
     //      .set{bwa_index;}
 
    fasta_ref_sa = returnFile( params.ref+'.sa' )
-    fasta_ref_bwt = returnFile( params.ref+'.bwt' )
-    fasta_ref_ann = returnFile( params.ref+'.ann' )
-    fasta_ref_amb = returnFile( params.ref+'.amb' )
-    fasta_ref_pac = returnFile( params.ref+'.pac' )
-    fasta_ref_alt = returnFile( params.ref+'.alt' )
+   fasta_ref_bwt = returnFile( params.ref+'.bwt' )
+   fasta_ref_ann = returnFile( params.ref+'.ann' )
+   fasta_ref_amb = returnFile( params.ref+'.amb' )
+   fasta_ref_pac = returnFile( params.ref+'.pac' )
+   fasta_ref_alt = returnFile( params.ref+'.alt' )
 }
 
 
-//aux funtions to check is a file exists
-def returnFile(it) {
-  // Return file if it exists
-    inputFile = file(it)
-    if (!file(inputFile).exists()) exit 1, "The following file: ${inputFile},  do not exist!!! see --help for more information"
-    return inputFile
+
+//manta process
+
+process manta  {
+  cpus params.cpu
+  memory params.mem+'G'
+  tag {"Manta"+sampleID }
+
+  publishDir "${params.output_folder}/MANTA/", mode: 'copy'
+
+
+  input:
+  set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_manta
+  file fasta_ref
+  file fasta_ref_fai
+  file manta_callable
+  output:
+   //primary vcf file
+   set val(sampleID), file("${sampleID}.manta_somatic_inv.vcf") into manta_vcf
+   //set val(sampleID), file("${sampleID}.manta_somatic.vcf") into manta_vcf
+   //additional files
+   file("${sampleID}.manta_somatic.vcf") into manta_output
+   file("${sampleID}_results") into manta_res_dir
+  when: params.manta
+
+  script:
+  //we set the computational resources for this tool
+
+  """
+  #we create the configuration file
+  CFG_MANTA=${params.manta_cfg}
+  python \$CFG_MANTA \\
+  --normalBam=${normalBam} \\
+  --tumorBam=${tumorBam} \\
+  --runDir=${sampleID}.matched \\
+  --referenceFasta=${fasta_ref} \\
+  --callRegions=${manta_callable}
+  #we run the manta caller
+  python ${sampleID}.matched/runWorkflow.py  --quiet -j ${params.cpu} -g ${params.mem}
+  #we recover the result files
+  cp ${sampleID}.matched/results/variants/somaticSV.vcf.gz   ${sampleID}.manta_somatic.vcf.gz
+  gzip -dc ${sampleID}.manta_somatic.vcf.gz > ${sampleID}.manta_somatic.vcf
+  python ${baseDir}/aux_scripts/manta_convertINV.py ${params.manta_samtools} ${fasta_ref} ${sampleID}.manta_somatic.vcf > ${sampleID}.manta_somatic_inv.vcf
+  mv ${sampleID}.matched/results ${sampleID}_results
+  #mv ${sampleID}.matched/results/variants/candidateSmallIndels.vcf.gz ${sampleID}.manta_candidateSmallIndels.vcf.gz
+  #mv ${sampleID}.matched/results/variants/candidateSV.vcf.gz ${sampleID}.manta_candidateSV.vcf.gz
+  #mv ${sampleID}.matched/results/variants/diploidSV.vcf.gz ${sampleID}.manta_diploidSV.vcf.gz
+  """
+
 }
+
 
 //delly process
 process delly {
@@ -171,7 +216,6 @@ process svaba {
      set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_svaba
      file fasta_ref
      file fasta_ref_fai
-     //set val(sampleID),file(fasta_ref_sa),file(fasta_ref_bwt),file(fasta_ref_ann),file(fasta_ref_ann),file(fasta_ref_amb),file(fasta_ref_pac),file(fasta_ref_alt) from bwa_index
      file fasta_ref_sa
      file fasta_ref_bwt
      file fasta_ref_ann
@@ -199,6 +243,13 @@ process svaba {
 }
 
 
+//aux funtions to check is a file exists
+def returnFile(it) {
+  // Return file if it exists
+    inputFile = file(it)
+    if (!file(inputFile).exists()) exit 1, "The following file: ${inputFile},  do not exist!!! see --help for more information"
+    return inputFile
+}
 
 
 
