@@ -53,19 +53,18 @@ if (params.help) exit 0, show_help()
 
 //we load the tn_file for processing
 if(params.tn_file == null) exit 0, show_help()
+if(params.ref == null) exit 0, show_help()
 if(params.bam){
   params.ext=".bai"
 }
 
 //we create the channel for svaba, delly and manta
 Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', strip: true)
-                .map{row ->
-                              def a = row.sampleID
-                              def b = returnFile(params.input_folder + "/" +row.tumor)
-                              def c = returnFile(params.input_folder + "/" +row.tumor+params.ext)
-                              def d = returnFile(params.input_folder + "/" +row.normal)
-                              def e = returnFile(params.input_folder + "/" +row.normal+params.ext)
-                            [a,b,c,d,e]}
+                .map{row -> [ row.sampleID,
+                              file(params.input_folder + "/" +row.tumor),
+                              file(params.input_folder + "/" +row.tumor+params.ext),
+                              file(params.input_folder + "/" +row.normal),
+                              file(params.input_folder + "/" +row.normal+params.ext)]}
                 .into{genomes_svaba; genomes_delly; genomes_manta}
 
 
