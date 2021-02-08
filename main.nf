@@ -127,7 +127,7 @@ process manta  {
   input:
   set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_manta
   file(fasta_ref) from fasta_ref_c
-  file(asta_ref_fai) from fasta_ref_fai_c
+  file(fasta_ref_fai) from fasta_ref_fai_c
   //file fasta_ref
   //file fasta_ref_fai
   file manta_callable
@@ -178,7 +178,7 @@ process delly {
   input:
   set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_delly
   file(fasta_ref) from fasta_ref_c
-  file(asta_ref_fai) from fasta_ref_fai_c
+  file(fasta_ref_fai) from fasta_ref_fai_c
   //file fasta_ref
   //file fasta_ref_fai
   file delly_blacklist
@@ -219,7 +219,7 @@ process svaba {
      //file fasta_ref
      //file fasta_ref_fai
      file(fasta_ref) from fasta_ref_c
-     file(asta_ref_fai) from fasta_ref_fai_c
+     file(fasta_ref_fai) from fasta_ref_fai_c
      file fasta_ref_sa
      file fasta_ref_bwt
      file fasta_ref_ann
