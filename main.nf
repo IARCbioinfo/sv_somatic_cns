@@ -64,7 +64,7 @@ Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', s
                               returnFile(params.input_folder + "/" +row.tumor+params.ext),
                               returnFile(params.input_folder + "/" +row.normal),
                               returnFile(params.input_folder + "/" +row.normal+params.ext)]}
-                  .into{genomes_svaba; genomes_delly; genomes_manta}
+                .into{genomes_svaba; genomes_delly; genomes_manta}
 
 
 running_tools = []
@@ -118,7 +118,8 @@ if (params.svaba) {
 process manta  {
   cpus params.cpu
   memory params.mem+'G'
-  tag {"Manta"+sampleID }
+  tag "${sampleID}-Manta"
+  //tag {"Manta"+sampleID }
   //label 'manta_exec'
 
   publishDir "${params.output_folder}/MANTA/", mode: 'copy'
@@ -171,7 +172,7 @@ process manta  {
 process delly {
   cpus 1
   memory params.mem+'G'
-  tag {"Delly"+sampleID }
+  tag "${sampleID}-delly"
 
   publishDir "${params.output_folder}/DELLY/", mode: 'copy'
 
@@ -210,7 +211,8 @@ process delly {
 process svaba {
 	   cpus params.cpu
      memory params.mem+'G'
-     tag { "SVABA"+sampleID }
+     //tag { "SVABA"+sampleID }
+     tag "${sampleID}-SVaba"
 
      publishDir "${params.output_folder}/SVABA/", mode: 'copy'
 
