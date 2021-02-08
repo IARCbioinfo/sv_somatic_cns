@@ -216,7 +216,7 @@ process svaba {
 
      publishDir "${params.output_folder}/SVABA/", mode: 'copy'
 
-     input :
+     input:
      set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_svaba
      //file fasta_ref
      //file fasta_ref_fai
