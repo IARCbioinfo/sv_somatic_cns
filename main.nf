@@ -59,11 +59,13 @@ if(params.bam){
 
 //we create the channel for svaba, delly and manta
 Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', strip: true)
-                .map{row -> [ row.sampleID,
-                              returnFile(params.input_folder + "/" +row.tumor),
-                              returnFile(params.input_folder + "/" +row.tumor+params.ext),
-                              returnFile(params.input_folder + "/" +row.normal),
-                              returnFile(params.input_folder + "/" +row.normal+params.ext)]}
+                .map{row ->
+                              def a = row.sampleID
+                              def b = returnFile(params.input_folder + "/" +row.tumor)
+                              def c = returnFile(params.input_folder + "/" +row.tumor+params.ext)
+                              def d = returnFile(params.input_folder + "/" +row.normal)
+                              def e = returnFile(params.input_folder + "/" +row.normal+params.ext)
+                            [a,b,c,d,e]}
                 .into{genomes_svaba; genomes_delly; genomes_manta}
 
 
