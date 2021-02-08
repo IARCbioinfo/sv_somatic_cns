@@ -78,17 +78,17 @@ fasta_ref_fai_c = Channel.value(returnFile( params.ref+'.fai' )).ifEmpty{exit 1,
 
 
 
-delly_blacklist = ""
-manta_callable = ""
 
+manta_callable_c = false
+delly_blacklist_c = false
 if (params.delly) {
     running_tools.add("Delly")
-    delly_blacklist = returnFile("$baseDir/blacklist/human.hg38.excl.delly.tsv")
+    delly_blacklist_c = Channel.value(returnFile("$baseDir/blacklist/human.hg38.excl.delly.tsv")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/human.hg38.excl.delly.tsv"}
 }
 
 if (params.manta) {
     running_tools.add("Manta")
-    manta_callable = returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz")
+    manta_callable_c = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz"}
 }
 
 
@@ -131,7 +131,7 @@ process manta  {
   file(fasta_ref_fai) from fasta_ref_fai_c
   //file fasta_ref
   //file fasta_ref_fai
-  file manta_callable
+  file (manta_callable) from manta_callable_c
   output:
    //primary vcf file
    set val(sampleID), file("${sampleID}.manta_somatic_inv.vcf") into manta_vcf
@@ -188,7 +188,7 @@ process delly {
   file(fasta_ref_fai) from fasta_ref_fai_c
   //file fasta_ref
   //file fasta_ref_fai
-  file delly_blacklist
+  file (delly_blacklist) from delly_blacklist_c
 
   output:
    //primary vcf file
