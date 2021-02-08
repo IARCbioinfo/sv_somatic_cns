@@ -69,8 +69,14 @@ Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', s
 
 running_tools = []
 //we load the index file
-fasta_ref = returnFile(params.ref)
-fasta_ref_fai = returnFile( params.ref+'.fai' )
+//fasta_ref = returnFile(params.ref)
+//fasta_ref_fai = returnFile( params.ref+'.fai' )
+
+fasta_ref_c = Channel.value(returnFile(params.ref)).ifEmpty{exit 1, "Fasta file not found: ${params.ref}"}
+fasta_ref_fai_c = Channel.value(returnFile( params.ref+'.fai' )).ifEmpty{exit 1, "FAI file not found: ${params.ref}.fai"}
+//ch_transcript = Channel.value(file(params.transcript)).ifEmpty{exit 1, "Transcript file not found: ${params.transcript}"}
+
+
 
 delly_blacklist = ""
 manta_callable = ""
@@ -97,15 +103,6 @@ fasta_ref_alt = ""
 if (params.svaba) {
     running_tools.add("SVaba")
     //BWA index for SVaba
-    //Channel.fromList(["BWAindex",returnFile( params.ref+'.sa'),
-    //                  returnFile( params.ref+'.bwt' ),
-    //                  returnFile( params.ref+'.ann' ),
-    //                  returnFile( params.ref+'.amb' ),
-    //                  returnFile( params.ref+'.pac' ),
-    //                  returnFile( params.ref+'.alt' ),
-    //                  ])
-    //      .set{bwa_index;}
-
    fasta_ref_sa = returnFile( params.ref+'.sa' )
    fasta_ref_bwt = returnFile( params.ref+'.bwt' )
    fasta_ref_ann = returnFile( params.ref+'.ann' )
@@ -129,8 +126,10 @@ process manta  {
 
   input:
   set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_manta
-  file fasta_ref
-  file fasta_ref_fai
+  file(fasta_ref) from fasta_ref_c
+  file(asta_ref_fai) from fasta_ref_fai_c
+  //file fasta_ref
+  //file fasta_ref_fai
   file manta_callable
   output:
    //primary vcf file
@@ -178,8 +177,10 @@ process delly {
 
   input:
   set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_delly
-  file fasta_ref
-  file fasta_ref_fai
+  file(fasta_ref) from fasta_ref_c
+  file(asta_ref_fai) from fasta_ref_fai_c
+  //file fasta_ref
+  //file fasta_ref_fai
   file delly_blacklist
 
   output:
@@ -215,8 +216,10 @@ process svaba {
 
      input :
      set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_svaba
-     file fasta_ref
-     file fasta_ref_fai
+     //file fasta_ref
+     //file fasta_ref_fai
+     file(fasta_ref) from fasta_ref_c
+     file(asta_ref_fai) from fasta_ref_fai_c
      file fasta_ref_sa
      file fasta_ref_bwt
      file fasta_ref_ann
