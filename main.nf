@@ -64,7 +64,7 @@ Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', s
                               returnFile(params.input_folder + "/" +row.tumor+params.ext),
                               returnFile(params.input_folder + "/" +row.normal),
                               returnFile(params.input_folder + "/" +row.normal+params.ext)]}
-                  .into{genomes_svaba; genomes_delly; genomes_manta;}
+                  .into{genomes_svaba; genomes_delly; genomes_manta}
 
 
 running_tools = []
