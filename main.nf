@@ -75,13 +75,14 @@ running_tools = []
 
 fasta_ref_c = Channel.value(returnFile(params.ref)).ifEmpty{exit 1, "Fasta file not found: ${params.ref}"}
 fasta_ref_fai_c = Channel.value(returnFile( params.ref+'.fai' )).ifEmpty{exit 1, "FAI file not found: ${params.ref}.fai"}
-//ch_transcript = Channel.value(file(params.transcript)).ifEmpty{exit 1, "Transcript file not found: ${params.transcript}"}
 
 
 
-
+//channels for execution
 manta_callable_c = false
 delly_blacklist_c = false
+manta_callable_i = false
+
 if (params.delly) {
     running_tools.add("Delly")
     delly_blacklist_c = Channel.value(returnFile("$baseDir/blacklist/human.hg38.excl.delly.tsv")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/human.hg38.excl.delly.tsv"}
@@ -265,7 +266,7 @@ process svaba {
      """
      svaba run -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -a somatic_run -G ${fasta_ref} ${targets} ${params.svaba_options}
      mv somatic_run.alignments.txt.gz ${sampleID}.alignments.txt.gz
-     for f in `ls *.vcf`; do mv $f ${sampleID}.$f; done
+     for f in `ls *.vcf`; do mv \$f ${sampleID}.\$f; done
      """
    }else{
      """
