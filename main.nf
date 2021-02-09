@@ -69,19 +69,16 @@ Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', s
 
 
 running_tools = []
-//we load the index file
-//fasta_ref = returnFile(params.ref)
-//fasta_ref_fai = returnFile( params.ref+'.fai' )
-
 fasta_ref_c = Channel.value(returnFile(params.ref)).ifEmpty{exit 1, "Fasta file not found: ${params.ref}"}
 fasta_ref_fai_c = Channel.value(returnFile( params.ref+'.fai' )).ifEmpty{exit 1, "FAI file not found: ${params.ref}.fai"}
 
 
 
-//channels for execution
+//channels for callabe or blacklist regions hg38
 manta_callable_c = false
 delly_blacklist_c = false
 manta_callable_i = false
+svaba_blacklist_c = false
 
 if (params.delly) {
     running_tools.add("Delly")
@@ -92,7 +89,6 @@ if (params.manta) {
     running_tools.add("Manta")
     manta_callable_c = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz"}
     manta_callable_i = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz.tbi")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz.tbi"}
-
 }
 
 
@@ -113,6 +109,7 @@ if (params.svaba) {
    fasta_ref_amb = returnFile( params.ref+'.amb' )
    fasta_ref_pac = returnFile( params.ref+'.pac' )
    fasta_ref_alt = returnFile( params.ref+'.alt' )
+   svaba_blacklist_c = Channel.value(returnFile("$baseDir/blacklist/human.hg38.excl.svaba.bed")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/human.hg38.excl.svaba.bed"}
 }
 
 
@@ -123,18 +120,13 @@ process manta  {
   cpus params.cpu
   memory params.mem+'G'
   tag "${sampleID}-Manta"
-  //tag {"Manta"+sampleID }
-  //label 'manta_exec'
 
   publishDir "${params.output_folder}/MANTA/", mode: 'copy'
-
 
   input:
   set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_manta
   file(fasta_ref) from fasta_ref_c
   file(fasta_ref_fai) from fasta_ref_fai_c
-  //file fasta_ref
-  //file fasta_ref_fai
   file (manta_callable) from manta_callable_c
   file (manta_callable_index) from manta_callable_i
 
@@ -192,8 +184,6 @@ process delly {
   set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_delly
   file(fasta_ref) from fasta_ref_c
   file(fasta_ref_fai) from fasta_ref_fai_c
-  //file fasta_ref
-  //file fasta_ref_fai
   file (delly_blacklist) from delly_blacklist_c
 
   output:
@@ -225,21 +215,16 @@ process delly {
   }
 }
 
-
-
 //we run the SVaba caller
 process svaba {
 	   cpus params.cpu
      memory params.mem+'G'
-     //tag { "SVABA"+sampleID }
      tag "${sampleID}-SVaba"
 
      publishDir "${params.output_folder}/SVABA/", mode: 'copy'
 
      input:
      set val(sampleID),file(tumorBam),file(tumorBai),file(normalBam),file(normalBai) from genomes_svaba
-     //file fasta_ref
-     //file fasta_ref_fai
      file(fasta_ref) from fasta_ref_c
      file(fasta_ref_fai) from fasta_ref_fai_c
      file fasta_ref_sa
@@ -248,6 +233,7 @@ process svaba {
      file fasta_ref_amb
      file fasta_ref_pac
      file fasta_ref_alt
+     file (svaba_blacklist) from svaba_blacklist_c
 
      output:
      set val(sampleID), file("${sampleID}*.vcf") into svaba_vcf
@@ -264,7 +250,7 @@ process svaba {
      else dbsnp="--dbsnp-vcf ${params.svaba_dbsnp}"
     if (params.debug==false){
      """
-     svaba run -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -a somatic_run -G ${fasta_ref} ${targets} ${params.svaba_options}
+     svaba run -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -B ${svaba_blacklist} -a somatic_run -G ${fasta_ref} ${targets} ${params.svaba_options}
      mv somatic_run.alignments.txt.gz ${sampleID}.alignments.txt.gz
      for f in `ls *.vcf`; do mv \$f ${sampleID}.\$f; done
      """
