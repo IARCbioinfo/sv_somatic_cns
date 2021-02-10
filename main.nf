@@ -42,7 +42,7 @@ def show_help (){
         --svaba_dbsnp                FILE        dbSNP file available at: https://data.broadinstitute.org/snowman/dbsnp_indel.vcf
         --svaba_targets              FILE        bed file with target positions for svaba
         --svaba_options              STRING      List of options to pass to svaba
-
+        --svaba_by_chr  [bool]        Run SVABA by Chromsosome [def:true]           
 
     """.stripIndent()
 }
@@ -237,7 +237,7 @@ process svaba {
 
      output:
      set val(sampleID), file("${sampleID}*.vcf") into svaba_vcf
-     file "${sampleID}.alignments.txt.gz" into svaba_alignments
+     file "${sampleID}.{alignments.txt.gz,bps.txt.gz,log}" into svaba_alignments
 
      when: params.svaba
 
@@ -249,11 +249,29 @@ process svaba {
      if(params.svaba_dbsnp == "None") dbsnp=""
      else dbsnp="--dbsnp-vcf ${params.svaba_dbsnp}"
     if (params.debug==false){
+      if(params.svaba_by_chr == true){
+        //we run svaba by chromosome
+        """
+        #we define the chromsomes to call
+        CHRS="chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY"
+        for chr in \$CHRS ; do
+        svaba run -k \$chr -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -B ${svaba_blacklist} \\
+        -a somatic_run_\$chr -G ${fasta_ref} ${targets} ${params.svaba_options} ;
+        done
+        #we merge the results into a single genome
+        perl ${baseDir}/aux_scripts/merge_chrs_svaba.pl -s ${sampleID}
+        #generates the output files
+        """
+
+      }else{
      """
      svaba run -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -B ${svaba_blacklist} -a somatic_run -G ${fasta_ref} ${targets} ${params.svaba_options}
      mv somatic_run.alignments.txt.gz ${sampleID}.alignments.txt.gz
+     mv somatic_run.bps.txt.gz ${sampleID}.bps.txt.gz
+     mv somatic_run.log ${sampleID}.log
      for f in `ls *.vcf`; do mv \$f ${sampleID}.\$f; done
      """
+     }
    }else{
      """
      touch ${sampleID}.alignments.txt.gz
@@ -265,6 +283,12 @@ process svaba {
    }
 }
 
+//svaba run -t T680_DA_C000KIJ_H2M5HCCX2_hs38dh_MERGE_PE_3-4.reliable.cram -n T680_DA_C000KII_H2MKNCCX2_hs38dh_MERGE_PE_8.reliable.cram -p 2 --dbsnp-vcf /data/scratch/digenovaa/lungNENomics/SVs/databases/dbsnp_146.hg38.indels.vcf -B human.hg38.excl.svaba.bed -a s_run_chr1 -G hs38DH.fa -k chr2
+//s_run_chr1.alignments.txt.gz  s_run_chr1.svaba.germline.indel.vcf	      s_run_chr1.svaba.unfiltered.germline.sv.vcf
+//s_run_chr1.bps.txt.gz	      s_run_chr1.svaba.germline.sv.vcf		      s_run_chr1.svaba.unfiltered.somatic.indel.vcf
+//s_run_chr1.contigs.bam	      s_run_chr1.svaba.somatic.indel.vcf	      s_run_chr1.svaba.unfiltered.somatic.sv.vcf
+//s_run_chr1.discordant.txt.gz  s_run_chr1.svaba.somatic.sv.vcf
+//s_run_chr1.log		      s_run_chr1.svaba.unfiltered.germline.indel.vcf
 
 //aux funtions to check is a file exists
 def returnFile(it) {
