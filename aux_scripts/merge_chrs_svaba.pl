@@ -9,14 +9,14 @@ use Getopt::Std;
 use strict;
 
 sub usage {
-   print "$0 usage : -s sampleID\n";
+   print "$0 usage : -s sampleID -p <prefix>\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "s:", \%opts );
-if ( !defined $opts{s}){
+getopts( "s:p:", \%opts );
+if ( !defined $opts{s} or !defined $opts{p}){
    usage;
 }
 
@@ -43,7 +43,7 @@ my @svaba_e=("svaba.germline.indel.vcf","svaba.germline.sv.vcf",
               #"discordant.txt.gz");
 #we merge all the chromosomes
 foreach my $e(@svaba_e){
-    my ($merge)=check_file("s_run",$e,@chrom);
+    my ($merge)=check_file($opts{p},$e,@chrom);
     #we merge the vcf files
     if($e =~m/\.vcf/){
         merge_vcf($opts{s},$e,@$merge);
@@ -63,8 +63,12 @@ sub merge_log{
   my ($sample, $e,@files)=@_;
   my $out=join(".",$sample, $e);
   my $cmd=join(" ","cat ",@files," > ",$out);
-  print $cmd."\n";
-  #system($cmd);
+  #print $cmd."\n";
+  system($cmd);
+  if ($? == -1) {
+    print "failed to execute: $!\n";
+    exit 1;
+  }
 }
 
 
@@ -73,8 +77,12 @@ sub merge_aln{
   my ($sample,$e,@files)=@_;
   my $out=join(".",$sample, $e);
   my $cmd=join(" ","gzip -dc ",@files," | gzip > ",$out);
-  print $cmd."\n";
-  #system($cmd);
+  #print $cmd."\n";
+  system($cmd);
+  if ($? == -1) {
+    print "failed to execute: $!\n";
+    exit 1;
+  }
 }
 
 
@@ -102,7 +110,11 @@ sub merge_bps{
     }
     #we close the out file
     close(OUT);
-    system("gzip $out.gz && rm -f $out");
+    system("gzip $out");
+    if ($? == -1) {
+      print "failed to execute: $!\n";
+      exit 1;
+    }
 }
 
 #Function that merge VCF files
@@ -141,8 +153,8 @@ sub check_file{
         push(@{$files},$f);
       }else{
         print "$f do not exist\n";
-        #exit 1;
-        push(@{$files},$f);
+        exit 1;
+        #push(@{$files},$f);
       }
     }
     return $files;

@@ -42,7 +42,7 @@ def show_help (){
         --svaba_dbsnp                FILE        dbSNP file available at: https://data.broadinstitute.org/snowman/dbsnp_indel.vcf
         --svaba_targets              FILE        bed file with target positions for svaba
         --svaba_options              STRING      List of options to pass to svaba
-        --svaba_by_chr  [bool]        Run SVABA by Chromsosome [def:true]           
+        --svaba_by_chr  [bool]        Run SVABA by Chromsosome [def:true]
 
     """.stripIndent()
 }
@@ -258,8 +258,8 @@ process svaba {
         svaba run -k \$chr -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -B ${svaba_blacklist} \\
         -a somatic_run_\$chr -G ${fasta_ref} ${targets} ${params.svaba_options} ;
         done
-        #we merge the results into a single genome
-        perl ${baseDir}/aux_scripts/merge_chrs_svaba.pl -s ${sampleID}
+        #we merge the results into a single genome 
+        perl ${baseDir}/aux_scripts/merge_chrs_svaba.pl -s ${sampleID} -p somatic_run
         #generates the output files
         """
 
