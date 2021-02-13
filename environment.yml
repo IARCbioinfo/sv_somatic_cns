@@ -5,7 +5,7 @@ channels:
   - defaults
 
 dependencies:
-  - delly==0.8.3
+  - delly==0.8.7
   - manta==1.6.0
   - svaba==1.1.0
   - survivor==1.0.7
