@@ -149,7 +149,7 @@ sub check_file{
     my $files=();
     foreach my $c (@chrom){
       my $f=join(".",$p."_".$c,$e);
-      if(-e $e){
+      if(-e $f){
         push(@{$files},$f);
       }else{
         print "$f do not exist\n";
