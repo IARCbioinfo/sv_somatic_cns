@@ -9,5 +9,5 @@ dependencies:
   - manta==1.6.0
   - svaba==1.1.0
   - survivor==1.0.7
-  - bcftools==1.11
-  - samtools==1.11
+  - bcftools==1.10
+  - samtools==1.10
