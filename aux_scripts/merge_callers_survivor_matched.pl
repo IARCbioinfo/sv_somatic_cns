@@ -106,6 +106,8 @@ open(OUT,">$opts{p}.integration.vcf") or die "cannot create $opts{p}.integration
      }
      # svaba
      my $geno3=parse_geno_id($d[11]);
+	#print Dumper($geno3);
+	#print Dumper($d[11]);
 
      if($geno3 ne "NaN"){
        push(@caller,"SVaba");
@@ -123,6 +125,7 @@ open(OUT,">$opts{p}.integration.vcf") or die "cannot create $opts{p}.integration
        $s_svaba->{$geno3}->{tags}->{RAF},
        $s_svaba->{$geno3}->{tags}->{RFS});
        $max_pe_sr = $s_svaba->{$geno3}->{tags}->{PE_SR} if($s_svaba->{$geno3}->{tags}->{PE_SR} > $max_pe_sr);
+	#print Dumper($s_svaba->{$geno3});
 
         $trsup+=$s_svaba->{$geno3}->{tags}->{PE_SR};
      }else{
@@ -142,9 +145,9 @@ open(OUT,">$opts{p}.integration.vcf") or die "cannot create $opts{p}.integration
 	#if($geno3 eq "NaN"){
         $d[7]="CALLERS=".join(",",@caller).";PES=$max_pe_sr;".$d[7];
         print OUT join("\t",@d[0..7],"ID:PE_SR:RF_SP:SVT:SVL:RAF:RFS",join(":",@f_manta),join(":",@f_delly),join(":",@f_svaba))."\n";
-	#}elsif($trsup >= 20){
-        #$d[7]="CALLERS=".join(",",@caller).";PES=$max_pe_sr;".$d[7];
-        #print OUT join("\t",@d[0..7],"ID:PE_SR:RF_SP:SVT:SVL:RAF:RFS",join(":",@f_manta),join(":",@f_delly),join(":",@f_svaba))."\n";
+		#}elsif($trsup >= 20){
+		#$d[7]="CALLERS=".join(",",@caller).";PES=$max_pe_sr;".$d[7];
+		#print OUT join("\t",@d[0..7],"ID:PE_SR:RF_SP:SVT:SVL:RAF:RFS",join(":",@f_manta),join(":",@f_delly),join(":",@f_svaba))."\n";
 	#}
 
       }
@@ -204,12 +207,16 @@ sub load_caller_data{
         }
 
      }elsif($caller eq "SVaba"){
+	my ($t_colum)=scalar(@{$geno});
+	$t_colum--;
        #total support of the SV for ALT
-       $sv_sup=$geno->[1]->{AD}[0];
+        #print Dumper($t_colum);
+	
+       $sv_sup=$geno->[$t_colum]->{AD}[0];
        #we compute the lengh of the SV
 
        #we add total supporting reads for ref/alt
-       $ref_sup=$geno->[1]->{DP}[0];
+       $ref_sup=$geno->[$t_colum]->{DP}[0];
        $ref_sup=1 if($ref_sup ==0);
        $caller2id->{$d[2]}->{tags}->{PE_SR}=$sv_sup;
        $caller2id->{$d[2]}->{tags}->{RAF}=$sv_sup/$ref_sup;
@@ -221,8 +228,9 @@ sub load_caller_data{
                $tags->{SVLEN}=abs($d[1]-$tags->{END});
        }
        #print Dumper($geno);
-
-
+       #print Dumper(@d);
+       #print Dumper(scalar(@{$geno}));
+       #print Dumper($caller2id->{$d[2]}->{tags});
      }
 
      my $rfs=$sv_sup+$ref_sup;
