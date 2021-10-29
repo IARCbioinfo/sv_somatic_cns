@@ -42,7 +42,7 @@ def show_help (){
         --svaba_dbsnp                FILE        dbSNP file available at: https://data.broadinstitute.org/snowman/dbsnp_indel.vcf
         --svaba_targets              FILE        bed file with target positions for svaba
         --svaba_options              STRING      List of options to pass to svaba
-        --svaba_by_chr  [bool]        Run SVABA by Chromsosome [def:true]
+        --svaba_by_chr  [bool]        Run SVABA by Chromosome recommended when alignments are in CRAM format [def:true]
 
     """.stripIndent()
 }
@@ -132,10 +132,10 @@ process manta  {
 
   output:
    //primary vcf file
-   set val(sampleID), file("${sampleID}.manta_somatic_inv.vcf") into manta_vcf
+   set val(sampleID), file("${sampleID}.manta_somatic_inv.pass.vcf") into manta_vcf
    //set val(sampleID), file("${sampleID}.manta_somatic.vcf") into manta_vcf
    //additional files
-   file("${sampleID}.manta_somatic.vcf") into manta_output
+   file("${sampleID}.manta_somatic_inv.pass.vcf") into manta_output
    file("${sampleID}_results") into manta_res_dir
   when: params.manta
 
@@ -157,15 +157,14 @@ process manta  {
   cp ${sampleID}.matched/results/variants/somaticSV.vcf.gz   ${sampleID}.manta_somatic.vcf.gz
   gzip -dc ${sampleID}.manta_somatic.vcf.gz > ${sampleID}.manta_somatic.vcf
   python ${baseDir}/aux_scripts/manta_convertINV.py ${params.manta_samtools} ${fasta_ref} ${sampleID}.manta_somatic.vcf > ${sampleID}.manta_somatic_inv.vcf
+  bcftools view -f PASS -o ${sampleID}.manta_somatic_inv.pass.vcf -O v ${sampleID}.manta_somatic_inv.vcf
   mv ${sampleID}.matched/results ${sampleID}_results
-  #mv ${sampleID}.matched/results/variants/candidateSmallIndels.vcf.gz ${sampleID}.manta_candidateSmallIndels.vcf.gz
-  #mv ${sampleID}.matched/results/variants/candidateSV.vcf.gz ${sampleID}.manta_candidateSV.vcf.gz
-  #mv ${sampleID}.matched/results/variants/diploidSV.vcf.gz ${sampleID}.manta_diploidSV.vcf.gz
   """
   }else{
     """
     touch ${sampleID}.manta_somatic_inv.vcf
     touch ${sampleID}.manta_somatic.vcf
+    touch ${sampleID}.manta_somatic_inv.pass.vcf
     mkdir ${sampleID}_results
     """
   }
@@ -236,8 +235,11 @@ process svaba {
      file (svaba_blacklist) from svaba_blacklist_c
 
      output:
-     set val(sampleID), file("${sampleID}*.vcf") into svaba_vcf
-     file "${sampleID}.{alignments.txt.gz,bps.txt.gz,log}" into svaba_alignments
+     set val(sampleID), file("${sampleID}.svaba.somatic.sv.types.vcf") into svaba_vcf
+     file "${sampleID}.{alignments.txt.gz,bps.txt.gz,log}" into svaba_alignments optional true
+     file "${sampleID}.svaba.unfiltered*.vcf" into svaba_unfiltered
+     file "${sampleID}.svaba.germline*.vcf" into svaba_germline
+     file "${sampleID}.{svaba.somatic.indel.vcf,svaba.somatic.sv.vcf}" into svaba_somatic
 
      when: params.svaba
 
@@ -252,15 +254,19 @@ process svaba {
       if(params.svaba_by_chr == true){
         //we run svaba by chromosome
         """
-        #we define the chromsomes to call
+        #we define the chromsomes to call, here we assume hg38 reference
         CHRS="chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY"
         for chr in \$CHRS ; do
         svaba run -k \$chr -t ${tumorBam} ${normal} -p ${params.cpu} ${dbsnp} -B ${svaba_blacklist} \\
         -a somatic_run_\$chr -G ${fasta_ref} ${targets} ${params.svaba_options} ;
         done
-        #we merge the results into a single genome 
+        #we merge the results into a single genome
         perl ${baseDir}/aux_scripts/merge_chrs_svaba.pl -s ${sampleID} -p somatic_run
         #generates the output files
+        #we remove the duplicated translocations that results for runing svABA by chromosome
+        perl ${baseDir}/aux_scripts/remove_duplicated_translocations_svaba_by_chr.pl -a  ${sampleID}.svaba.somatic.sv.vcf >  ${sampleID}.svaba.somatic.sv.dedup.vcf
+        #we add the types to svABA predictions
+        perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.somatic.sv.dedup.vcf > ${sampleID}.svaba.somatic.sv.types.vcf
         """
 
       }else{
@@ -269,26 +275,82 @@ process svaba {
      mv somatic_run.alignments.txt.gz ${sampleID}.alignments.txt.gz
      mv somatic_run.bps.txt.gz ${sampleID}.bps.txt.gz
      mv somatic_run.log ${sampleID}.log
-     for f in `ls *.vcf`; do mv \$f ${sampleID}.\$f; done
+     mv
+     for f in `ls *.vcf`; do mv \$f ${sampleID}.\${f/somatic_run.}; done
+
+     perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.somatic.sv.dedup.vcf > ${sampleID}.svaba.somatic.sv.types.vcf
      """
      }
    }else{
      """
      touch ${sampleID}.alignments.txt.gz
-     touch ${sampleID}.somatic.sv.vcf
-     touch ${sampleID}.somatic.indel.vcf
-     touch ${sampleID}.germline.sv.vcf
-     touch ${sampleID}.germline.indel.vcf
+     touch ${sampleID}.svaba.somatic.sv.vcf
+     touch ${sampleID}.svaba.somatic.indel.vcf
+     touch ${sampleID}.svaba.germline.sv.vcf
+     touch ${sampleID}.svaba.germline.indel.vcf
+     touch ${sampleID}.svaba.somatic.sv.types.vcf
      """
    }
 }
 
-//svaba run -t T680_DA_C000KIJ_H2M5HCCX2_hs38dh_MERGE_PE_3-4.reliable.cram -n T680_DA_C000KII_H2MKNCCX2_hs38dh_MERGE_PE_8.reliable.cram -p 2 --dbsnp-vcf /data/scratch/digenovaa/lungNENomics/SVs/databases/dbsnp_146.hg38.indels.vcf -B human.hg38.excl.svaba.bed -a s_run_chr1 -G hs38DH.fa -k chr2
-//s_run_chr1.alignments.txt.gz  s_run_chr1.svaba.germline.indel.vcf	      s_run_chr1.svaba.unfiltered.germline.sv.vcf
-//s_run_chr1.bps.txt.gz	      s_run_chr1.svaba.germline.sv.vcf		      s_run_chr1.svaba.unfiltered.somatic.indel.vcf
-//s_run_chr1.contigs.bam	      s_run_chr1.svaba.somatic.indel.vcf	      s_run_chr1.svaba.unfiltered.somatic.sv.vcf
-//s_run_chr1.discordant.txt.gz  s_run_chr1.svaba.somatic.sv.vcf
-//s_run_chr1.log		      s_run_chr1.svaba.unfiltered.germline.indel.vcf
+
+//we merge integrate the calls using VURVIVOR
+//merge manta delly
+m_m_d=delly_vcf.join(manta_vcf)
+survivor_input=m_m_d.join(svaba_vcf)
+
+//m_m_d_s.view()
+
+process SURVIVOR{
+  cpus params.cpu
+  memory params.mem+'G'
+  tag "${sampleID}-SURVIVOR"
+
+  publishDir "${params.output_folder}/SURVIVOR/", mode: 'copy'
+  input:
+  set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_input
+  output:
+
+  script:
+  if (params.debug==false){
+   """
+   #we run SURVIVOR plus some filters
+   perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v}\
+               -b ${delly_v} -c ${svaba_v} -p ${sampleID}.cns
+   #Veen data for consensus with at least two tools and at least 15 pair-end read support for single-tool predictions
+   perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.integration.vcf | \
+   sed -e 's/\(.\)/\1 /g' > ${sampleID}.veen.integration.txt
+   #Veen data for consensus of SURVIVOR
+   perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.survivor.vcf | \
+   sed -e 's/\(.\)/\1 /g' > ${sampleID}.veen.survivor.txt
+   # We convert the *.cns.integration.vcf files to bedpe format
+   SURVIVOR vcftobed ${sampleID}.cns.integration.vcf -1 -1 ${sampleID}.cns.integration.bedpe
+   """
+  }else{
+    """
+    #we run SURVIVOR plus some filters
+    echo perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v}\
+                -b ${delly_v} -c ${svaba_v} -p ${sampleID}.cns
+    #Veen data for consensus with at least two tools and at least 15 pair-end read support for single-tool predictions
+    echo perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.integration.vcf  \
+    sed -e 's/\(.\)/\1 /g' > ${sampleID}.cns.veen.integration.txt
+    #Veen data for consensus of SURVIVOR
+    echo perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.survivor.vcf  \
+    sed -e 's/\(.\)/\1 /g' > ${sampleID}.cns.veen.survivor.txt
+    # We convert the *.cns.integration.vcf files to bedpe format
+    echo SURVIVOR vcftobed ${sampleID}.cns.integration.vcf -1 -1 ${sampleID}.cns.integration.bedpe
+    touch ${sampleID}.cns.veen.integration.txt
+    touch ${sampleID}.cns.veen.survivor.txt
+    touch ${sampleID}.cns.integration.vcf
+    touch ${sampleID}.cns.survivor.vcf
+    touch ${sampleID}.cns.lst
+    touch ${sampleID}.cns.survivor.log
+    touch ${sampleID}.cns.integration.bedpe
+    """
+  }
+
+}
+
 
 //aux funtions to check is a file exists
 def returnFile(it) {
@@ -299,6 +361,47 @@ def returnFile(it) {
 }
 
 
+// print the calling parameter to the log and a log file
+def print_params () {
+  //software versions for v2.0
+ def software_versions = ['delly' : '0.8.7',
+                          'manta' : '1.6.0',
+                          'svaba' : '1.1.0',
+                          'survivor' : '1.0.7',
+                          'bcftools' : '1.10',
+                          'samtools' : '1.10']
+  //we print the parameters
+  log.info "\n"
+  log.info "-\033[2m------------------Calling PARAMETERS--------------------\033[0m-"
+  log.info params.collect{ k,v -> "${k.padRight(18)}: $v"}.join("\n")
+  log.info "-\033[2m--------------------------------------------------------\033[0m-"
+  log.info "\n"
+  log.info "-\033[2m------------------Software versions--------------------\033[0m-"
+  log.info software_versions.collect{ k,v -> "${k.padRight(18)}: $v"}.join("\n")
+  log.info "-\033[2m--------------------------------------------------------\033[0m-"
+  log.info "\n"
+
+
+  //we print the parameters to a log file
+   def output_d = new File("${params.output_folder}/nf-pipeline_info/")
+   if (!output_d.exists()) {
+       output_d.mkdirs()
+   }
+   def output_tf = new File(output_d, "run_parameters_report.txt")
+   def  report_params="------------------Calling PARAMETERS--------------------\n"
+        report_params+= params.collect{ k,v -> "${k.padRight(18)}: $v"}.join("\n")
+        report_params+="\n--------------------------------------------------------\n"
+        report_params+="\n------------------NEXTFLOW Metadata--------------------\n"
+        report_params+="nextflow version : "+nextflow.version+"\n"
+        report_params+="nextflow build   : "+nextflow.build+"\n"
+        report_params+="Command line     : \n"+workflow.commandLine.split(" ").join(" \\\n")
+        report_params+="\n--------------------------------------------------------\n"
+        report_params+="-----------------Software versions--------------------\n"
+        report_params+=software_versions.collect{ k,v -> "${k.padRight(18)}: $v"}.join("\n")
+        report_params+="\n--------------------------------------------------------\n"
+
+   output_tf.withWriter { w -> w << report_params}
+}
 
 
 
