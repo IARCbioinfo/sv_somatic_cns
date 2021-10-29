@@ -289,6 +289,10 @@ process svaba {
      touch ${sampleID}.svaba.germline.sv.vcf
      touch ${sampleID}.svaba.germline.indel.vcf
      touch ${sampleID}.svaba.somatic.sv.types.vcf
+     touch ${sampleID}.svaba.unfiltered.germline.indel.vcf
+     touch ${sampleID}.svaba.unfiltered.germline.sv.vcf
+     touch ${sampleID}.svaba.unfiltered.somatic.indel.vcf
+     touch ${sampleID}.svaba.unfiltered.somatic.sv.vcf
      """
    }
 }
@@ -310,33 +314,29 @@ process SURVIVOR{
   input:
   set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_input
   output:
-
+   file("*.cns.*") into survivor_output
   script:
   if (params.debug==false){
    """
    #we run SURVIVOR plus some filters
-   perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v}\
-               -b ${delly_v} -c ${svaba_v} -p ${sampleID}.cns
+   perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v} \\
+   -b ${delly_v} -c ${svaba_v} -p ${sampleID}.cns
    #Veen data for consensus with at least two tools and at least 15 pair-end read support for single-tool predictions
-   perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.integration.vcf | \
-   sed -e 's/\(.\)/\1 /g' > ${sampleID}.veen.integration.txt
-   #Veen data for consensus of SURVIVOR
-   perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.survivor.vcf | \
-   sed -e 's/\(.\)/\1 /g' > ${sampleID}.veen.survivor.txt
+   sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.cns.integration.vcf ${sampleID}.cns.veen.integration.txt
+   #Veen diagram for
+   sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.cns.survivor.vcf ${sampleID}.cns.veen.survivor.txt
    # We convert the *.cns.integration.vcf files to bedpe format
    SURVIVOR vcftobed ${sampleID}.cns.integration.vcf -1 -1 ${sampleID}.cns.integration.bedpe
    """
   }else{
     """
     #we run SURVIVOR plus some filters
-    echo perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v}\
+    echo perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v} \\
                 -b ${delly_v} -c ${svaba_v} -p ${sampleID}.cns
     #Veen data for consensus with at least two tools and at least 15 pair-end read support for single-tool predictions
-    echo perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.integration.vcf  \
-    sed -e 's/\(.\)/\1 /g' > ${sampleID}.cns.veen.integration.txt
-    #Veen data for consensus of SURVIVOR
-    echo perl -ne 'print "\$1\n" if /SUPP_VEC=([^,;]+)/' ${sampleID}.cns.survivor.vcf  \
-    sed -e 's/\(.\)/\1 /g' > ${sampleID}.cns.veen.survivor.txt
+    echo sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.cns.integration.vcf ${sampleID}.cns.veen.integration.txt
+    #Veen diagram for
+    echo sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.cns.survivor.vcf ${sampleID}.cns.veen.survivor.txt
     # We convert the *.cns.integration.vcf files to bedpe format
     echo SURVIVOR vcftobed ${sampleID}.cns.integration.vcf -1 -1 ${sampleID}.cns.integration.bedpe
     touch ${sampleID}.cns.veen.integration.txt
