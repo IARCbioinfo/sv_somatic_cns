@@ -19,8 +19,7 @@ def show_help (){
       --output_folder      FOLDER                   Output Folder [def:results]
       --bam                                         File to process are BAM [def:CRAM]
     References
-      --ref [file]                    Path to fasta reference
-      --bwa_index [file]               Path to BWA index for running SVaba caller
+      --ref [file]                    Path to fasta reference including BWA index
 
       Profiles:
 
@@ -31,7 +30,7 @@ def show_help (){
       --delly [bool]                  Run DELLY SV caller
       --manta [bool]                  Run Manta SV caller
       --svaba [bool]                  Run SVaba SV caller
-
+      --all_sv_cns [bool]             Run all SV callers plus consensus
     Tool options:
         Delly:
 
@@ -43,7 +42,6 @@ def show_help (){
         --svaba_targets              FILE        bed file with target positions for svaba
         --svaba_options              STRING      List of options to pass to svaba
         --svaba_by_chr  [bool]        Run SVABA by Chromosome recommended when alignments are in CRAM format [def:true]
-
     """.stripIndent()
 }
 
@@ -57,6 +55,7 @@ if(params.ref == null) exit 0, show_help()
 if(params.bam){
   params.ext=".bai"
 }
+
 
 //we create the channel for svaba, delly and manta
 Channel.fromPath(returnFile(params.tn_file)).splitCsv(header: true, sep: '\t', strip: true)
@@ -80,12 +79,12 @@ delly_blacklist_c = false
 manta_callable_i = false
 svaba_blacklist_c = false
 
-if (params.delly) {
+if (params.delly || params.all_sv_cns) {
     running_tools.add("Delly")
     delly_blacklist_c = Channel.value(returnFile("$baseDir/blacklist/human.hg38.excl.delly.tsv")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/human.hg38.excl.delly.tsv"}
 }
 
-if (params.manta) {
+if (params.manta || params.all_sv_cns) {
     running_tools.add("Manta")
     manta_callable_c = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz"}
     manta_callable_i = Channel.value(returnFile("$baseDir/blacklist/manta_callable_chrs.hg38.bed.gz.tbi")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/manta_callable_chrs.hg38.bed.gz.tbi"}
@@ -99,8 +98,8 @@ fasta_ref_ann = ""
 fasta_ref_amb = ""
 fasta_ref_pac = ""
 fasta_ref_alt = ""
-//bwa_index=Channel.create()
-if (params.svaba) {
+
+if (params.svaba || params.all_sv_cns) {
     running_tools.add("SVaba")
     //BWA index for SVaba
    fasta_ref_sa = returnFile( params.ref+'.sa' )
@@ -115,7 +114,6 @@ if (params.svaba) {
 
 
 //manta process
-
 process manta  {
   cpus params.cpu
   memory params.mem+'G'
@@ -133,11 +131,10 @@ process manta  {
   output:
    //primary vcf file
    set val(sampleID), file("${sampleID}.manta_somatic_inv.pass.vcf") into manta_vcf
-   //set val(sampleID), file("${sampleID}.manta_somatic.vcf") into manta_vcf
    //additional files
    file("${sampleID}.manta_somatic_inv.pass.vcf") into manta_output
    file("${sampleID}_results") into manta_res_dir
-  when: params.manta
+  when: params.manta || params.all_sv_cns
 
   script:
   //we set the computational resources for this tool
@@ -190,7 +187,7 @@ process delly {
    set val(sampleID), file("${sampleID}.delly_somatic.vcf") into delly_vcf
    //optional files
    file("*.{tsv,bcf}") into delly_output
-  when: params.delly
+  when: params.delly || params.all_sv_cns
 
   script:
   //run delly with mathched data
@@ -241,7 +238,7 @@ process svaba {
      file "${sampleID}.svaba.germline*.vcf" into svaba_germline
      file "${sampleID}.{svaba.somatic.indel.vcf,svaba.somatic.sv.vcf}" into svaba_somatic
 
-     when: params.svaba
+     when: params.svaba || params.all_sv_cns
 
      script:
      if(params.svaba_targets) targets="-k ${params.svaba_targets}"
