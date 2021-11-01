@@ -272,9 +272,9 @@ process svaba {
      mv somatic_run.alignments.txt.gz ${sampleID}.alignments.txt.gz
      mv somatic_run.bps.txt.gz ${sampleID}.bps.txt.gz
      mv somatic_run.log ${sampleID}.log
-     mv
+     #rename the resulting files
      for f in `ls *.vcf`; do mv \$f ${sampleID}.\${f/somatic_run.}; done
-
+     #we add the types to svaba
      perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.somatic.sv.dedup.vcf > ${sampleID}.svaba.somatic.sv.types.vcf
      """
      }
