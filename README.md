@@ -2,7 +2,7 @@
 Consensus calling of Somatic Structural variants from Paired WGS
 
 ## Description
-Pipeline using multiple SV callers for consensus structural variant calling from tumor/normal sequencing data.
+Pipeline using multiple SV callers for consensus structural variant calling from tumor/normal sequencing data. 
 
 ## Usage
   ```
@@ -88,6 +88,10 @@ results
 ```
 
 
+
+## Limitations
+
+The current version of the pipeline can handle Tumor/Normal pairs only but not multi-region WGS data.
 
 ## Common errors
 
