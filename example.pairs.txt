@@ -1,6 +1,0 @@
-sampleID	tumor	normal
-T1	T1.cram	N1.cram
-T2	T2.cram	N2.cram
-T3	T3.cram	N2.cram
-T2	T2.cram	N2.cram
-T3	T3.cram	N2.cram
