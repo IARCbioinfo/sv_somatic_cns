@@ -58,7 +58,7 @@ See the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository for more in
 A text file tabular separated, with the following header:
 
 ```
-tumor_id	tumor	normal
+sampleID	tumor	normal
 sample1_T1	sample1_T.cram	sample1_N.cram
 sample2_T1	sample2_T.cram	sample2_N.cram
 sample3_T1	sample3_T.cram	sample3_N.cram
