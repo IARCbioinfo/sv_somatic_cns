@@ -1,4 +1,4 @@
-# sv_somatic_cns
+# sv_somatic_cns-nf
 Consensus calling of Somatic Structural variants from Paired WGS
 
 ## Description
