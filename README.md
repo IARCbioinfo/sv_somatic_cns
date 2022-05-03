@@ -7,7 +7,7 @@ Pipeline using multiple SV callers for consensus structural variant calling from
 ## Usage
   ```
   # Run the whole pipeline and consensus of calls
-  nextflow run iarcbioinfo/sv_somatic_cns -r v1.0 \
+  nextflow run iarcbioinfo/sv_somatic_cns-nf -r v1.0 \
   -profile singularity  --tn_file tn_pairs..txt \
   --input_folder $PWD/CRAM \
   --ref hs38DH.fa \
@@ -15,7 +15,7 @@ Pipeline using multiple SV callers for consensus structural variant calling from
   --output_folder results
 
   #Run Delly and manta only
-  nextflow run iarcbioinfo/sv_somatic_cns -r v1.0 \
+  nextflow run iarcbioinfo/sv_somatic_cns-nf -r v1.0 \
   -profile singularity  --tn_file tn_pairs..txt \
   --input_folder $PWD/CRAM \
   --ref hs38DH.fa \
