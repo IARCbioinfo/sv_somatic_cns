@@ -11,7 +11,7 @@ def show_help (){
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run iarc/sv_somatic_cns --tn_file pairs.txt -profile singularity
+    nextflow run iarc/sv_somatic_cns-nf --tn_file pairs.txt -profile singularity
 
     Mandatory arguments:
       --tn_file  [file]                             file with tabular data for each sample to process [sampleID tumor normal]
