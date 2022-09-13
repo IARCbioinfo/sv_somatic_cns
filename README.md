@@ -46,6 +46,7 @@ See the [IARC-nf](https://github.com/IARCbioinfo/IARC-nf) repository for more in
   | --input_folder    | Folder containing all BAM/CRAM files |  
   | --tn_file    | File containing the list of names of BAM files to be processed |
   |--ref         |  Fasta file of reference genome [hg38.fa], should be indexed [hg38.fa.fai]|
+  |--gtf         |  GTF file with gene/transcripts/exon annotations [hg38.gtf] |
   Flags to run each SV caller combinations
   | --delly  | run the Delly SV caller |
   | --manta  | run the Manta SV caller |
