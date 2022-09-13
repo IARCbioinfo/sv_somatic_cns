@@ -20,6 +20,7 @@ def show_help (){
       --bam                                         File to process are BAM [def:CRAM]
     References
       --ref [file]                    Path to fasta reference including BWA index
+      --gtf [file]                    Path to gtf with gene annotation
 
       Profiles:
 
@@ -111,7 +112,7 @@ if (params.svaba || params.all_sv_cns) {
    svaba_blacklist_c = Channel.value(returnFile("$baseDir/blacklist/human.hg38.excl.svaba.bed")).ifEmpty{exit 1, "File not found: $baseDir/blacklist/human.hg38.excl.svaba.bed"}
 }
 
-
+gtf = returnFile( params.gtf )
 
 //manta process
 process manta  {
@@ -131,8 +132,8 @@ process manta  {
   output:
    //primary vcf file
    set val(sampleID), file("${sampleID}.manta_somatic_inv.pass.vcf") into manta_vcf
+   set val(sampleID), file("${sampleID}.manta_germline_inv.pass.vcf") into manta_germline_vcf
    //additional files
-   file("${sampleID}.manta_somatic_inv.pass.vcf") into manta_output
    file("${sampleID}_results") into manta_res_dir
   when: params.manta || params.all_sv_cns
 
@@ -152,9 +153,13 @@ process manta  {
   python ${sampleID}.matched/runWorkflow.py  --quiet -j ${params.cpu} -g ${params.mem}
   #we recover the result files
   cp ${sampleID}.matched/results/variants/somaticSV.vcf.gz   ${sampleID}.manta_somatic.vcf.gz
+  cp ${sampleID}.matched/results/variants/diploidSV.vcf.gz   ${sampleID}.manta_germline.vcf.gz
   gzip -dc ${sampleID}.manta_somatic.vcf.gz > ${sampleID}.manta_somatic.vcf
+  gzip -dc ${sampleID}.manta_germline.vcf.gz > ${sampleID}.manta_germline.vcf
   python ${baseDir}/aux_scripts/manta_convertINV.py ${params.manta_samtools} ${fasta_ref} ${sampleID}.manta_somatic.vcf > ${sampleID}.manta_somatic_inv.vcf
+  python ${baseDir}/aux_scripts/manta_convertINV.py ${params.manta_samtools} ${fasta_ref} ${sampleID}.manta_germline.vcf > ${sampleID}.manta_germline_inv.vcf
   bcftools view -f PASS -o ${sampleID}.manta_somatic_inv.pass.vcf -O v ${sampleID}.manta_somatic_inv.vcf
+  bcftools view -f PASS -o ${sampleID}.manta_germline_inv.pass.vcf -O v ${sampleID}.manta_germline_inv.vcf
   mv ${sampleID}.matched/results ${sampleID}_results
   """
   }else{
@@ -162,6 +167,9 @@ process manta  {
     touch ${sampleID}.manta_somatic_inv.vcf
     touch ${sampleID}.manta_somatic.vcf
     touch ${sampleID}.manta_somatic_inv.pass.vcf
+    touch ${sampleID}.manta_germline_inv.vcf
+    touch ${sampleID}.manta_germline.vcf
+    touch ${sampleID}.manta_germline_inv.pass.vcf
     mkdir ${sampleID}_results
     """
   }
@@ -185,6 +193,7 @@ process delly {
   output:
    //primary vcf file
    set val(sampleID), file("${sampleID}.delly_somatic.vcf") into delly_vcf
+   set val(sampleID), file("${sampleID}.delly_germline.vcf") into delly_germline_vcf
    //optional files
    file("*.{tsv,bcf}") into delly_output
   when: params.delly || params.all_sv_cns
@@ -193,20 +202,22 @@ process delly {
   //run delly with mathched data
   if (params.debug==false){
   """
-  delly call -x  ${delly_blacklist}  -g ${fasta_ref} -o ${sampleID}.matched.bcf ${tumorBam} ${normalBam}
+  delly call -x  ${delly_blacklist}  -g ${fasta_ref} -o ${sampleID}.germline.bcf ${tumorBam} ${normalBam}
   #we call use the file
-  bcftools view ${sampleID}.matched.bcf | grep "^#CHR" | awk '{print \$10"\ttumor"; print \$11"\tcontrol"}' > ${sampleID}.sample.tsv
+  bcftools view ${sampleID}.germline.bcf | grep "^#CHR" | awk '{print \$10"\ttumor"; print \$11"\tcontrol"}' > ${sampleID}.sample.tsv
   #we apply the somatic filter and keep only PASS variants
-  delly filter -f somatic -s ${sampleID}.sample.tsv -p -o ${sampleID}.somatic.bcf ${sampleID}.matched.bcf
-  #we convert the bcf file to VCF
+  delly filter -f somatic -s ${sampleID}.sample.tsv -p -o ${sampleID}.somatic.bcf ${sampleID}.germline.bcf
+  #we convert the bcf files to VCF
   bcftools view ${sampleID}.somatic.bcf > ${sampleID}.delly_somatic.vcf
+  bcftools view ${sampleID}.germline.bcf > ${sampleID}.delly_germline.vcf
   """
   }else{
     """
       touch ${sampleID}.sample.tsv
-      touch ${sampleID}.matched.bcf
+      touch ${sampleID}.germline.bcf
       touch ${sampleID}.somatic.bcf
       touch ${sampleID}.delly_somatic.vcf
+      touch ${sampleID}.delly_germline.vcf
     """
   }
 }
@@ -233,9 +244,10 @@ process svaba {
 
      output:
      set val(sampleID), file("${sampleID}.svaba.somatic.sv.types.vcf") into svaba_vcf
+     set val(sampleID), file("${sampleID}.svaba.germline.sv.types.vcf") into svaba_germline_vcf
      file "${sampleID}.{alignments.txt.gz,bps.txt.gz,log}" into svaba_alignments optional true
      file "${sampleID}.svaba.unfiltered*.vcf" into svaba_unfiltered
-     file "${sampleID}.svaba.germline*.vcf" into svaba_germline
+     file "${sampleID}.{svaba.germline.indel.vcf,svaba.germline.sv.vcf}" into svaba_germline
      file "${sampleID}.{svaba.somatic.indel.vcf,svaba.somatic.sv.vcf}" into svaba_somatic
 
      when: params.svaba || params.all_sv_cns
@@ -262,8 +274,10 @@ process svaba {
         #generates the output files
         #we remove the duplicated translocations that results for runing svABA by chromosome
         perl ${baseDir}/aux_scripts/remove_duplicated_translocations_svaba_by_chr.pl -a  ${sampleID}.svaba.somatic.sv.vcf >  ${sampleID}.svaba.somatic.sv.dedup.vcf
+        perl ${baseDir}/aux_scripts/remove_duplicated_translocations_svaba_by_chr.pl -a  ${sampleID}.svaba.germline.sv.vcf >  ${sampleID}.svaba.germline.sv.dedup.vcf
         #we add the types to svABA predictions
         perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.somatic.sv.dedup.vcf > ${sampleID}.svaba.somatic.sv.types.vcf
+        perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.germline.sv.dedup.vcf > ${sampleID}.svaba.germline.sv.types.vcf
         """
 
       }else{
@@ -276,6 +290,7 @@ process svaba {
      for f in `ls *.vcf`; do mv \$f ${sampleID}.\${f/somatic_run.}; done
      #we add the types to svaba
      perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.somatic.sv.dedup.vcf > ${sampleID}.svaba.somatic.sv.types.vcf
+     perl  ${baseDir}/aux_scripts/add_type_svaba.pl -a ${sampleID}.svaba.germline.sv.dedup.vcf > ${sampleID}.svaba.germline.sv.types.vcf
      """
      }
    }else{
@@ -286,6 +301,7 @@ process svaba {
      touch ${sampleID}.svaba.germline.sv.vcf
      touch ${sampleID}.svaba.germline.indel.vcf
      touch ${sampleID}.svaba.somatic.sv.types.vcf
+     touch ${sampleID}.svaba.germline.sv.types.vcf
      touch ${sampleID}.svaba.unfiltered.germline.indel.vcf
      touch ${sampleID}.svaba.unfiltered.germline.sv.vcf
      touch ${sampleID}.svaba.unfiltered.somatic.indel.vcf
@@ -295,7 +311,7 @@ process svaba {
 }
 
 
-//we merge integrate the calls using VURVIVOR
+//we merge the calls using SURVIVOR
 //merge manta delly
 m_m_d=delly_vcf.join(manta_vcf)
 survivor_input=m_m_d.join(svaba_vcf)
@@ -348,6 +364,98 @@ process SURVIVOR{
 
 }
 
+//same for germline variants
+m_m_dg=delly_germline_vcf.join(manta_germline_vcf)
+survivor_germline_input=m_m_dg.join(svaba_germline_vcf)
+
+process SURVIVOR_germline{
+  cpus params.cpu
+  memory params.mem+'G'
+  tag "${sampleID}-SURVIVOR"
+
+  publishDir "${params.output_folder}/SURVIVOR/", mode: 'copy'
+  input:
+  set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_germline_input
+  output:
+   file("*.cns.*") into survivor_germline_output
+  script:
+  if (params.debug==false){
+   """
+   #we run SURVIVOR plus some filters
+   perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v} \\
+   -b ${delly_v} -c ${svaba_v} -p ${sampleID}.germline.cns
+   #Veen data for consensus with at least two tools and at least 15 pair-end read support for single-tool predictions
+   sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.germline.cns.integration.vcf ${sampleID}.germline.cns.veen.integration.txt
+   #Veen diagram for
+   sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.germline.cns.survivor.vcf ${sampleID}.germline.cns.veen.survivor.txt
+   # We convert the *.cns.integration.vcf files to bedpe format
+   SURVIVOR vcftobed ${sampleID}.germline.cns.integration.vcf -1 -1 ${sampleID}.germline.cns.integration.bedpe
+   """
+  }else{
+    """
+    #we run SURVIVOR plus some filters
+    echo perl ${baseDir}/aux_scripts/merge_callers_survivor_matched.pl -a ${manta_v} \\
+                -b ${delly_v} -c ${svaba_v} -p ${sampleID}.germline.cns
+    #Veen data for consensus with at least two tools and at least 15 pair-end read support for single-tool predictions
+    echo sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.germline.cns.integration.vcf ${sampleID}.germline.cns.veen.integration.txt
+    #Veen diagram for
+    echo sh ${baseDir}/aux_scripts/get_data_veen.sh ${sampleID}.germline.cns.survivor.vcf ${sampleID}.germline.cns.veen.survivor.txt
+    # We convert the *.cns.integration.vcf files to bedpe format
+    echo SURVIVOR vcftobed ${sampleID}.germline.cns.integration.vcf -1 -1 ${sampleID}.germline.cns.integration.bedpe
+    touch ${sampleID}.germline.cns.veen.integration.txt
+    touch ${sampleID}.germline.cns.veen.survivor.txt
+    touch ${sampleID}.germline.cns.integration.vcf
+    touch ${sampleID}.germline.cns.survivor.vcf
+    touch ${sampleID}.germline.cns.lst
+    touch ${sampleID}.germline.cns.survivor.log
+    touch ${sampleID}.germline.cns.integration.bedpe
+    """
+  }
+
+}
+
+//we annotate the somatic results
+process annotate{
+  cpus params.cpu
+  memory params.mem+'G'
+  tag "${sampleID}-SURVIVOR"
+
+  publishDir "${params.output_folder}/SURVIVOR/", mode: 'copy'
+  input:
+  set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_output
+  file(gtf) from gtf
+  output:
+   file("SVs_somatic_annotated.tsv") into survivor_annotated_output
+  script:
+  """
+   #we run the R script for annotation
+   Rscript ${baseDir}/aux_scripts/SV_annotation.R -r !{gtf}
+   mv SVs_annotated.tsv SVs_somatic_annotated.tsv
+   """
+
+}
+
+
+//we annotate the germline results
+process annotate_germline{
+  cpus params.cpu
+  memory params.mem+'G'
+  tag "${sampleID}-SURVIVOR"
+
+  publishDir "${params.output_folder}/SURVIVOR/", mode: 'copy'
+  input:
+  set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_germline_output
+  file(gtf) from gtf
+  output:
+   file("SVs_germline_annotated.tsv") into survivor_annotated_output
+  script:
+  """
+   #we run the R script for annotation
+   Rscript ${baseDir}/aux_scripts/SV_annotation.R -r !{gtf}
+   mv SVs_annotated.tsv SVs_germline_annotated.tsv
+   """
+
+}
 
 //aux funtions to check is a file exists
 def returnFile(it) {
