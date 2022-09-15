@@ -447,7 +447,7 @@ process annotate_germline{
   set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_germline_output
   file(gtf) from gtf
   output:
-   file("SVs_germline_annotated.tsv") into survivor_annotated_output
+   file("SVs_germline_annotated.tsv") into survivor_germline_annotated_output
   script:
   """
    #we run the R script for annotation
@@ -530,6 +530,6 @@ def IARC_Header (){
 //useful url: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
 def tool_header (){
         return """
-        Consensus Somatic Caller : (v${workflow.manifest.version})
+        Consensus Somatic and Germline SV Caller : (v${workflow.manifest.version})
         """
 }
