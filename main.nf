@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-
 //help function for the tool
 def show_help (){
   log.info IARC_Header()
@@ -36,7 +35,7 @@ def show_help (){
         Delly:
 
         Manta:
-        --manta_cfg                   Manta config file [def:"/opt/conda/envs/sv_somatic_cns/share/manta-1.6.0-0/bin/configManta.py"]
+        --manta_cfg                   Manta config file [def:"/opt/conda/envs/sv_somatic_cns/share/manta-1.6.0-2/bin/configManta.py"]
         --manta_samtools              path to samtools [def:"/opt/conda/envs/sv_somatic_cns/bin/samtools"]
         SVaba:
         --svaba_dbsnp                FILE        dbSNP file available at: https://data.broadinstitute.org/snowman/dbsnp_indel.vcf
@@ -470,7 +469,7 @@ def returnFile(it) {
 def print_params () {
   //software versions for v1.1
  def software_versions = ['delly' : '1.1.3',
-                          'manta' : '1.6.0',
+                          'manta' : '1.6.0-2',
                           'svaba' : '1.1.0',
                           'survivor' : '1.0.7',
                           'bcftools' : '1.15.1',
