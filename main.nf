@@ -468,13 +468,13 @@ def returnFile(it) {
 
 // print the calling parameter to the log and a log file
 def print_params () {
-  //software versions for v2.0
- def software_versions = ['delly' : '0.8.7',
+  //software versions for v1.1
+ def software_versions = ['delly' : '1.1.3',
                           'manta' : '1.6.0',
                           'svaba' : '1.1.0',
                           'survivor' : '1.0.7',
-                          'bcftools' : '1.10',
-                          'samtools' : '1.10']
+                          'bcftools' : '1.15.1',
+                          'samtools' : '1.15.1']
   //we print the parameters
   log.info "\n"
   log.info "-\033[2m------------------Calling PARAMETERS--------------------\033[0m-"
