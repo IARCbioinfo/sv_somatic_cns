@@ -10,3 +10,4 @@ dependencies:
   - r-data.table==1.14.2
   - r-readxl==1.4.1
   - r-optparse==1.7.3
+  - bioconductor-rtracklayer==1.58.0

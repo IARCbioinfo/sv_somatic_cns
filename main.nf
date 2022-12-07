@@ -428,7 +428,7 @@ process annotate{
   script:
   """
    #we run the R script for annotation
-   Rscript ${baseDir}/aux_scripts/SV_annotation.R -r !{gtf}
+   Rscript ${baseDir}/aux_scripts/SV_annotation.R -r ${gtf}
    mv SVs_annotated.tsv SVs_somatic_annotated.tsv
    """
 
@@ -450,7 +450,7 @@ process annotate_germline{
   script:
   """
    #we run the R script for annotation
-   Rscript ${baseDir}/aux_scripts/SV_annotation.R -r !{gtf}
+   Rscript ${baseDir}/aux_scripts/SV_annotation.R -r ${gtf}
    mv SVs_annotated.tsv SVs_germline_annotated.tsv
    """
 

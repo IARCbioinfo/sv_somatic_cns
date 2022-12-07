@@ -7,7 +7,7 @@ option_list = list(
   make_option(c("-r", "--reference"), type="character", default=".", help="Path to gtf file with gene annotations [default= %default]", metavar="character"),
   make_option(c("-i", "--input"), type="character", default=".", help="Folder with SV results [default= %default]", metavar="character"),
   make_option(c("-l", "--individual_label"), type="character", default="[-]*[B]*_T[U0-9]*$", help="Suffix indicating individual samples from a same group (e.g., regions of a same tumor, temporal samples) [default= %default]", metavar="character"),
-  make_option(c("-m", "--multi"), type="logical", default=F, help="Trigger multi-sample mode where discarded low-confidence SVs are recovered if found as high-confidence in one region  [default= %default]", metavar="character"),
+  make_option(c("-m", "--multi"), type="logical", default=F, help="Trigger multi-sample mode where discarded low-confidence SVs are recovered if found as high-confidence in one region  [default= %default]", metavar="character")
 ); 
 
 opt_parser = OptionParser(option_list=option_list);
@@ -27,7 +27,7 @@ ref = as.data.frame(ref)
 ## Exon
 ref = as.data.table(ref)
 ref.exon = ref[which(ref$type == "exon"),]
-levels(factor(ref$transcript_type))
+
 ref.exon = ref.exon[which(ref.exon$transcript_type %in% c("protein_coding","lncRNA")),]
 
 ref.exon[, exonNum := ifelse(strand=="+", seq(.N), rev(seq(.N))), by=gene_id]
@@ -220,17 +220,18 @@ all(grepl("lncRNA",dataset.sv.coding$exon_type.B2[which(grepl("protein_coding",d
 all(grepl("lncRNA",dataset.sv.coding$intron_type.B2[which(grepl("protein_coding",dataset.sv.coding$intron_type.B2) & dataset.sv.coding$intron_type.B2 != "protein_coding")]))
 
 ### If (++;--) kept if it involves at least one lncRNA or protein coding gene
-d1 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B1) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B1) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B2))),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
+d1 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B1) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B1))),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
 d2 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B2) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B2))),c("Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
 d1$gene_breakpoint = "g1"
 d2$gene_breakpoint = "g2"
 colnames(d1)[1:2] = c("ID","Sample_name")
 colnames(d2)[1:2] = c("ID","Sample_name")
 
-#inter = intersect(d1$SV_ID, d2$SV_ID)
-#dbis = rbind(d1[which(d1$SV_ID %in% inter),], d2[which(d2$SV_ID %in% inter),])
-#d1 = d1[which(!d1$SV_ID %in% inter),]
-#d2 = d2[which(!d2$SV_ID %in% inter),]
+inter = intersect(d1$SV_ID, d2$SV_ID)
+dbis = rbind(d1[which(d1$SV_ID %in% inter),], d2[which(d2$SV_ID %in% inter),])
+dbis$gene_breakpoint = "g1&g2"
+d1 = d1[which(!d1$SV_ID %in% inter),]
+d2 = d2[which(!d2$SV_ID %in% inter),]
 
 ### If (+-;-+) need to damage coding part
 ## lncRNA at least one exon involved
@@ -351,11 +352,6 @@ dim(d)
 
 d$Gene = sapply(d$ID, function(x) unique(ref.exon$geneSymbol[which(ref.exon$id == x)]))
 d$Group = str_remove(d$Sample_name,opt$individual_label)
-#d$time = "Parental"
-#d$time[str_detect(d$Sample_name,"p")] = "Organoid1"
-#d = d[d$Sample_name!="LNET2Np12",]
-#d$time[d$Sample_name == "LCNEC4Tp24"] = "Organoid2"
-#d$time[d$Sample_name == "PANEC1Tp14"] = "Organoid2"
 d$Gene = sapply(d$Gene,function(x){res=x;if(length(res)==0){res=NA};return(res)})
 
 write_tsv(file = "SVs_annotated.tsv",d)
