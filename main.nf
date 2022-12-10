@@ -424,12 +424,12 @@ process annotate{
   set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_output
   file(gtf) from gtf
   output:
-   file("SVs_somatic_annotated.tsv") into survivor_annotated_output
+   file("*SVs_somatic_annotated.tsv") into survivor_annotated_output
   script:
   """
    #we run the R script for annotation
    Rscript ${baseDir}/aux_scripts/SV_annotation.R -r ${gtf}
-   mv SVs_annotated.tsv SVs_somatic_annotated.tsv
+   mv SVs_annotated.tsv ${sampleID}_SVs_somatic_annotated.tsv
    """
 
 }
@@ -446,12 +446,12 @@ process annotate_germline{
   set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_germline_output
   file(gtf) from gtf
   output:
-   file("SVs_germline_annotated.tsv") into survivor_germline_annotated_output
+   file("*SVs_germline_annotated.tsv") into survivor_germline_annotated_output
   script:
   """
    #we run the R script for annotation
    Rscript ${baseDir}/aux_scripts/SV_annotation.R -r ${gtf}
-   mv SVs_annotated.tsv SVs_germline_annotated.tsv
+   mv SVs_annotated.tsv ${sampleID}_SVs_germline_annotated.tsv
    """
 
 }
