@@ -326,7 +326,7 @@ process SURVIVOR{
   input:
   set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_input
   output:
-   file("*.cns.*") into survivor_output
+  set val(sampleID),  file("*.cns.*") into survivor_output
   script:
   if (params.debug==false){
    """
@@ -376,7 +376,7 @@ process SURVIVOR_germline{
   input:
   set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_germline_input
   output:
-   file("*.cns.*") into survivor_germline_output
+   set val(sampleID), file("*.cns.*") into survivor_germline_output
   script:
   if (params.debug==false){
    """
@@ -421,7 +421,7 @@ process annotate{
 
   publishDir "${params.output_folder}/SURVIVOR/", mode: 'copy'
   input:
-  set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_output
+  set val(sampleID), file(survfiles) from survivor_output
   file(gtf) from gtf
   output:
    file("*SVs_somatic_annotated.tsv") into survivor_annotated_output
@@ -443,7 +443,7 @@ process annotate_germline{
 
   publishDir "${params.output_folder}/SURVIVOR/", mode: 'copy'
   input:
-  set val(sampleID),file(delly_v),file(manta_v),file(svaba_v) from survivor_germline_output
+  set val(sampleID), file(survfiles) from survivor_germline_output
   file(gtf) from gtf
   output:
    file("*SVs_germline_annotated.tsv") into survivor_germline_annotated_output

@@ -69,6 +69,9 @@ for(i in 1:length(vcf.SVl)){
 }
 dataset.sv = bind_rows(vcf.SVl)
 
+## remove SV in chromosomes
+dataset.sv = dataset.sv %>% filter(CHROM%in%paste0("chr",c(1:22,"X","Y") ) )
+
 ## Start with Breakpoint 1
 dataset.sv1 = dataset.sv
 colnames(dataset.sv1)[which(colnames(dataset.sv1) == "CHROM")] = "seqnames"
@@ -88,7 +91,10 @@ ref.exon = as.data.table(ref.exon)
 
 rm(ref)
 gc()
+#
 
+
+##
 ro = findOverlaps(GRanges(dataset.sv1), GRanges(ref.exon)) 
 dataset.sv1$exon_id     = dataset.sv1$exon_geneid = dataset.sv1$exon_type   = NA
 dataset.sv1$exon_id[queryHits(ro)] = ref.exon$exon_id[subjectHits(ro)]
