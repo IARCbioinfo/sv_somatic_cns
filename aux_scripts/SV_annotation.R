@@ -93,7 +93,6 @@ rm(ref)
 gc()
 #
 
-
 ##
 ro = findOverlaps(GRanges(dataset.sv1), GRanges(ref.exon)) 
 dataset.sv1$exon_id     = dataset.sv1$exon_geneid = dataset.sv1$exon_type   = NA
@@ -188,7 +187,7 @@ colnames(dataset.sv2)[which(colnames(dataset.sv2) == "exon_type")] = "exon_type.
 colnames(dataset.sv2)[which(colnames(dataset.sv2) == "cds_type")] = "cds_type.B2"
 colnames(dataset.sv2)[which(colnames(dataset.sv2) == "intron_type")] = "intron_type.B2"
 
-dataset.sv = cbind(dataset.sv1, dataset.sv2[,c("CHROM2","start.B2","end.B2","exon_id.B2","exon_geneid.B2","exon_type.B2","cds_id.B2","cds_geneid.B2","cds_type.B2","intron_id.B2","intron_geneid.B2","intron_type.B2")])
+dataset.sv = cbind(dataset.sv1, dataset.sv2[,c("ID","CHROM2","start.B2","end.B2","exon_id.B2","exon_geneid.B2","exon_type.B2","cds_id.B2","cds_geneid.B2","cds_type.B2","intron_id.B2","intron_geneid.B2","intron_type.B2")])
 head(dataset.sv)
 dataset.sv$CHROM = paste0("chr",dataset.sv$CHROM)
 dataset.sv$CHROM2 = paste0("chr",dataset.sv$CHROM2)
@@ -226,102 +225,119 @@ all(grepl("lncRNA",dataset.sv.coding$exon_type.B2[which(grepl("protein_coding",d
 all(grepl("lncRNA",dataset.sv.coding$intron_type.B2[which(grepl("protein_coding",dataset.sv.coding$intron_type.B2) & dataset.sv.coding$intron_type.B2 != "protein_coding")]))
 
 ### If (++;--) kept if it involves at least one lncRNA or protein coding gene
-d1 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B1) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B1))),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
-d2 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B2) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B2))),c("Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
-d1$gene_breakpoint = "g1"
-d2$gene_breakpoint = "g2"
-colnames(d1)[1:2] = c("ID","Sample_name")
-colnames(d2)[1:2] = c("ID","Sample_name")
+d1 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B1) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B1))),c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
+d2 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("++","--") & (grepl("protein_coding|lncRNA", dataset.sv.coding$exon_type.B2) | grepl("protein_coding|lncRNA", dataset.sv.coding$intron_type.B2))),c("ID","Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
+d1$gene_breakpoint = "B1"
+d2$gene_breakpoint = "B2"
+colnames(d1)[2:3] = c("Gene.ID","Sample_name")
+colnames(d2)[2:3] = c("Gene.ID","Sample_name")
 
 inter = intersect(d1$SV_ID, d2$SV_ID)
 dbis = rbind(d1[which(d1$SV_ID %in% inter),], d2[which(d2$SV_ID %in% inter),])
-dbis$gene_breakpoint = "g1&g2"
+dbis$gene_breakpoint = "B1&B2"
 d1 = d1[which(!d1$SV_ID %in% inter),]
 d2 = d2[which(!d2$SV_ID %in% inter),]
 
 ### If (+-;-+) need to damage coding part
 ## lncRNA at least one exon involved
 # Single gene
-d3 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$exon_type.B1) | grepl("lncRNA",dataset.sv.coding$intron_type.B1)) & (dataset.sv.coding$exon_id.B1 != "" | dataset.sv.coding$exon_id.B2 != "")),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
-d4 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
+d3 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
                                (grepl("lncRNA",dataset.sv.coding$exon_type.B1) | grepl("lncRNA",dataset.sv.coding$intron_type.B1)) & 
-                               is.na(dataset.sv.coding$exon_id.B1) & is.na(dataset.sv.coding$exon_id.B2) )[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
+                               (dataset.sv.coding$exon_id.B1 != "" | dataset.sv.coding$exon_id.B2 != "")),c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
+isd4 = which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
+               (grepl("lncRNA",dataset.sv.coding$exon_type.B1) | grepl("lncRNA",dataset.sv.coding$intron_type.B1)) & 
+               is.na(dataset.sv.coding$exon_id.B1) & is.na(dataset.sv.coding$exon_id.B2) )# to check before running next line to avoid crash
+if(length(isd4)>0 ){
+  d4 = dataset.sv.coding[isd4[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
                                                                                                                                 (grepl("lncRNA",dataset.sv.coding$exon_type.B1) | grepl("lncRNA",dataset.sv.coding$intron_type.B1)) & 
-                                                                                                                                is.na(dataset.sv.coding$exon_id.B1) & is.na(dataset.sv.coding$exon_id.B2) ), function(i) any(ref.exon$start[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i] & ref.exon$end[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
-d3$gene_breakpoint = "g1&g2"
-d4$gene_breakpoint = "g1&g2"
+                                                                                                                                is.na(dataset.sv.coding$exon_id.B1) & is.na(dataset.sv.coding$exon_id.B2) ), function(i) any(ref.exon$start[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i] & ref.exon$end[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
+}else{
+  d4 = dataset.sv.coding[isd4,c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
+}
+d3$gene_breakpoint = "B1&B2"
+d4$gene_breakpoint = "B1&B2"
 
 # Not same regions
-d5 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$exon_id.B1) & grepl("lncRNA",dataset.sv.coding$exon_type.B1)),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
-d6 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$exon_id.B2) & grepl("lncRNA",dataset.sv.coding$exon_type.B2)),c("Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
-d5$gene_breakpoint = "g1"
-d6$gene_breakpoint = "g2"
+d5 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$exon_id.B1) & grepl("lncRNA",dataset.sv.coding$exon_type.B1)),c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
+d6 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$exon_id.B2) & grepl("lncRNA",dataset.sv.coding$exon_type.B2)),c("ID","Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
+d5$gene_breakpoint = "B1"
+d6$gene_breakpoint = "B2"
 
-d7 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B1) | grepl("lncRNA",dataset.sv.coding$exon_type.B1)))[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B1) | grepl("lncRNA",dataset.sv.coding$exon_type.B1))), 
-                                                                                                                                                                                                                                                                                             function(i) any(ref.exon$start[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i])))],c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
-d8 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B2) | grepl("lncRNA",dataset.sv.coding$exon_type.B2)))[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B2) | grepl("lncRNA",dataset.sv.coding$exon_type.B2))), 
-                                                                                                                                                                                                                                                                                             function(i) any(ref.exon$start[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id2[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
-d7$gene_breakpoint = "g1"
-d8$gene_breakpoint = "g2"
+isd7 = which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B1) | grepl("lncRNA",dataset.sv.coding$exon_type.B1)))
+if(length(isd7)>0 ){
+  d7 = dataset.sv.coding[isd7[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B1) | grepl("lncRNA",dataset.sv.coding$exon_type.B1))), 
+                                                                                                                                                                                                                                                                                             function(i) any(ref.exon$start[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i])))],c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
+}else{# if empty list
+  d7 = dataset.sv.coding[isd7,c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]  
+}
+
+isd8 = which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B2) | grepl("lncRNA",dataset.sv.coding$exon_type.B2)))
+if(length(isd8)>0 ){
+  d8 = dataset.sv.coding[isd8[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & (grepl("lncRNA",dataset.sv.coding$intron_type.B2) | grepl("lncRNA",dataset.sv.coding$exon_type.B2))), 
+                                                                                                                                                                                                                                                                                             function(i) any(ref.exon$start[which(ref.exon$id %in% unlist(strsplit(dataset.sv.coding$Gene.id2[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("ID","Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
+}else{
+  d8 = dataset.sv.coding[isd8,c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]    
+}
+d7$gene_breakpoint = "B1"
+d8$gene_breakpoint = "B2"
 ## protein_coding at least one cds involved
 # Single gene
 d9  = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
                                 (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding") & 
-                                (!is.na(dataset.sv.coding$cds_id.B1) | !is.na(dataset.sv.coding$cds_id.B2))),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
-d10 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
-                                (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding") & 
-                                is.na(dataset.sv.coding$cds_id.B1) & is.na(dataset.sv.coding$cds_id.B2) )[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding") & is.na(dataset.sv.coding$cds_id.B1) & is.na(dataset.sv.coding$cds_id.B2) ),
-                                                                                                                       function(i) any(ref.cds$start[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i] & ref.cds$end[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
-d9$gene_breakpoint = "g1&g2"
-d10$gene_breakpoint = "g1&g2"
+                                (!is.na(dataset.sv.coding$cds_id.B1) | !is.na(dataset.sv.coding$cds_id.B2))),c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
+isd10 = which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & 
+                (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding") & 
+                is.na(dataset.sv.coding$cds_id.B1) & is.na(dataset.sv.coding$cds_id.B2) )
+if(length(isd10)>0 ){
+  d10 = dataset.sv.coding[isd10[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & dataset.sv.coding$Gene.id1 == dataset.sv.coding$Gene.id2 & (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding") & is.na(dataset.sv.coding$cds_id.B1) & is.na(dataset.sv.coding$cds_id.B2) ),
+                                                                                                                       function(i) any(ref.cds$start[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i] & ref.cds$end[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
+}else{
+  d10 = dataset.sv.coding[isd10,c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]    
+}
+d9$gene_breakpoint = "B1&B2"
+d10$gene_breakpoint = "B1&B2"
 # Not same regions
-d11 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$cds_id.B1) & dataset.sv.coding$cds_type.B1 == "protein_coding"),c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
-d12 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$cds_id.B2) & dataset.sv.coding$cds_type.B2 == "protein_coding"),c("Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
+d11 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$cds_id.B1) & dataset.sv.coding$cds_type.B1 == "protein_coding"),c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
+d12 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & !is.na(dataset.sv.coding$cds_id.B2) & dataset.sv.coding$cds_type.B2 == "protein_coding"),c("ID","Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because cut
 
-d11$gene_breakpoint = "g1"
-d12$gene_breakpoint = "g2"
+d11$gene_breakpoint = "B1"
+d12$gene_breakpoint = "B2"
 
-d13 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
-                                is.na(dataset.sv.coding$cds_id.B1) & (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding"))[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
+isd13 = which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
+                is.na(dataset.sv.coding$cds_id.B1) & (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding"))
+
+if(length(isd13)>0 ){
+  d13 = dataset.sv.coding[isd13[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id1) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
                                                                                                                                                                                                        is.na(dataset.sv.coding$cds_id.B1) & (dataset.sv.coding$exon_type.B1 == "protein_coding" | dataset.sv.coding$intron_type.B1 == "protein_coding")), 
-                                                                                                                                                                                               function(i) any(ref.cds$start[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i])))],c("Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
-d14 = dataset.sv.coding[which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
-                                is.na(dataset.sv.coding$cds_id.B2) & (dataset.sv.coding$exon_type.B2 == "protein_coding" | dataset.sv.coding$intron_type.B2 == "protein_coding"))[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
+                                                                                                                                                                                               function(i) any(ref.cds$start[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id1[i],"_")))] > dataset.sv.coding$end.B1[i])))],c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
+}else{
+  d13 = dataset.sv.coding[isd13,c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]    
+}
+isd14 = which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
+                is.na(dataset.sv.coding$cds_id.B2) & (dataset.sv.coding$exon_type.B2 == "protein_coding" | dataset.sv.coding$intron_type.B2 == "protein_coding"))
+if(length(isd14)>0){
+  d14 = dataset.sv.coding[isd14[which(sapply(which(dataset.sv.coding$STRANDS %in% c("+-","-+") & !is.na(dataset.sv.coding$Gene.id2) & dataset.sv.coding$Gene.id1 != dataset.sv.coding$Gene.id2 & 
                                                                                                                                                                                                        is.na(dataset.sv.coding$cds_id.B2) & (dataset.sv.coding$exon_type.B2 == "protein_coding" | dataset.sv.coding$intron_type.B2 == "protein_coding")), 
-                                                                                                                                                                                               function(i) any(ref.cds$start[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id2[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
-d13$gene_breakpoint = "g1"
-d14$gene_breakpoint = "g2"
+                                                                                                                                                                                               function(i) any(ref.cds$start[which(ref.cds$id %in% unlist(strsplit(dataset.sv.coding$Gene.id2[i],"_")))] < dataset.sv.coding$start.B2[i])))],c("ID","Gene.id2","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")] #At least one exon is involved because overlapping
+}else{
+  d14 = dataset.sv.coding[isd14,c("ID","Gene.id1","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]    
+}
+d13$gene_breakpoint = "B1"
+d14$gene_breakpoint = "B2"
 
 ### Merging
-colnames(d3)[1:2] = c("ID","Sample_name")
-colnames(d4)[1:2] = c("ID","Sample_name")
-colnames(d5)[1:2] = c("ID","Sample_name")
-colnames(d6)[1:2] = c("ID","Sample_name")
-colnames(d7)[1:2] = c("ID","Sample_name")
-colnames(d8)[1:2] = c("ID","Sample_name")
-colnames(d9)[1:2] = c("ID","Sample_name")
-colnames(d10)[1:2] = c("ID","Sample_name")
-colnames(d11)[1:2] = c("ID","Sample_name")
-colnames(d12)[1:2] = c("ID","Sample_name")
-colnames(d13)[1:2] = c("ID","Sample_name")
-colnames(d14)[1:2] = c("ID","Sample_name")
-
-# To distinguish genes altered in B1 and B2 to get the list of damaged genes
-#dbis$SV_ID = paste0(dbis$SV_ID,"-B1_B2")
-#d1$SV_ID = paste0(d1$SV_ID,"-B1") 
-#d2$SV_ID = paste0(d2$SV_ID,"-B2")
-#d3$SV_ID = paste0(d3$SV_ID,"-B1_B2")
-#d4$SV_ID = paste0(d4$SV_ID,"-B1_B2")
-#d5$SV_ID = paste0(d5$SV_ID,"-B1") 
-#d6$SV_ID = paste0(d6$SV_ID,"-B2")
-#d7$SV_ID = paste0(d7$SV_ID,"-B1")
-#d8$SV_ID = paste0(d8$SV_ID,"-B2")
-#d9$SV_ID = paste0(d9$SV_ID,"-B1_B2")
-#d10$SV_ID = paste0(d10$SV_ID,"-B1_B2")
-#d11$SV_ID = paste0(d11$SV_ID,"-B1")
-#d12$SV_ID = paste0(d12$SV_ID,"-B2")
-#d13$SV_ID = paste0(d13$SV_ID,"-B1")
-#d14$SV_ID = paste0(d14$SV_ID,"-B2")
+colnames(d3)[2:3] = c("Gene.ID","Sample_name")
+colnames(d4)[2:3] = c("Gene.ID","Sample_name")
+colnames(d5)[2:3] = c("Gene.ID","Sample_name")
+colnames(d6)[2:3] = c("Gene.ID","Sample_name")
+colnames(d7)[2:3] = c("Gene.ID","Sample_name")
+colnames(d8)[2:3] = c("Gene.ID","Sample_name")
+colnames(d9)[2:3] = c("Gene.ID","Sample_name")
+colnames(d10)[2:3] = c("Gene.ID","Sample_name")
+colnames(d11)[2:3] = c("Gene.ID","Sample_name")
+colnames(d12)[2:3] = c("Gene.ID","Sample_name")
+colnames(d13)[2:3] = c("Gene.ID","Sample_name")
+colnames(d14)[2:3] = c("Gene.ID","Sample_name")
 
 # Type of SVs
 unique(c(d1$type, d2$type))
@@ -356,11 +372,18 @@ all(unlist(strsplit(d$ID,"_")) %in% ref.exon$id)
 d = d[which(!duplicated(d)),]
 dim(d)
 
-d$Gene = sapply(d$ID, function(x) unique(ref.exon$geneSymbol[which(ref.exon$id == x)]))
+d$Gene = sapply(d$Gene.ID, function(x) unique(ref.exon$geneSymbol[which(ref.exon$id == x)]))
 d$Group = str_remove(d$Sample_name,opt$individual_label)
 d$Gene = sapply(d$Gene,function(x){res=x;if(length(res)==0){res=NA};return(res)})
 
-write_tsv(file = "SVs_annotated.tsv",d)
+# add non-coding SVs
+d.noncoding = dataset.sv[!dataset.sv$ID %in% d$ID,c("ID","Sample","type","SVTYPE","CHROM","start.B1","end.B1","CHROM2","start.B2","end.B2","tumor","STRANDS")]
+colnames(d.noncoding)[2] = "Sample_name"
+
+d.all = bind_rows(d,d.noncoding)
+
+# write results
+write_tsv(file = "SVs_annotated.tsv",d.all)
 
 
 # Code for multi-region samples

@@ -427,11 +427,10 @@ process annotate{
    file("*SVs_somatic_annotated.tsv") into survivor_annotated_output
   script:
   """
-   #we run the R script for annotation
    Rscript ${baseDir}/aux_scripts/SV_annotation.R -r ${gtf}
    mv SVs_annotated.tsv ${sampleID}_SVs_somatic_annotated.tsv
-   """
 
+   """
 }
 
 
@@ -449,11 +448,31 @@ process annotate_germline{
    file("*SVs_germline_annotated.tsv") into survivor_germline_annotated_output
   script:
   """
-   #we run the R script for annotation
    Rscript ${baseDir}/aux_scripts/SV_annotation.R -r ${gtf}
    mv SVs_annotated.tsv ${sampleID}_SVs_germline_annotated.tsv
-   """
 
+   """
+}
+
+//we annotate the germline results
+process PON_filtering{
+  cpus params.cpu
+  memory params.mem+'G'
+  tag "PON_filtering"
+
+  publishDir "${params.output_folder}/", mode: 'copy'
+  input:
+  file(annot_germ) from survivor_germline_annotated_output.collect()
+  file(annot_som) from survivor_annotated_output.collect()
+
+  output:
+   file("SV*recurrent*.tsv") into PON_output_rec
+   file("SV*PONfiltered.tsv") into PON_output_PONfilt
+   file("SV*burden.tsv") into PON_output_burden
+  script:
+  """
+   Rscript ${baseDir}/aux_scripts/SV_PON.R
+  """
 }
 
 //aux funtions to check is a file exists
